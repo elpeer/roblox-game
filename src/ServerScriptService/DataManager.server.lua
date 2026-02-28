@@ -6,7 +6,19 @@ local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlayerDataStore = DataStoreService:GetDataStore("BrainrotSimulator_v1")
+local PlayerDataStore
+local DataStoreAvailable = false
+
+local success, result = pcall(function()
+	return DataStoreService:GetDataStore("BrainrotSimulator_v1")
+end)
+
+if success then
+	PlayerDataStore = result
+	DataStoreAvailable = true
+else
+	warn("[DataManager] DataStore not available (game not published?). Using local data only.")
+end
 
 local DataManager = {}
 DataManager.PlayerData = {} -- [userId] = data table
@@ -40,9 +52,12 @@ function DataManager.LoadData(player: Player)
 	local userId = player.UserId
 	local key = "Player_" .. tostring(userId)
 
-	local success, data = pcall(function()
-		return PlayerDataStore:GetAsync(key)
-	end)
+	local success, data = false, nil
+	if DataStoreAvailable then
+		success, data = pcall(function()
+			return PlayerDataStore:GetAsync(key)
+		end)
+	end
 
 	if success and data then
 		-- Merge with defaults to handle new fields
@@ -67,6 +82,7 @@ function DataManager.SaveData(player: Player)
 	local data = DataManager.PlayerData[userId]
 
 	if not data then return end
+	if not DataStoreAvailable then return end
 
 	local success, err = pcall(function()
 		PlayerDataStore:SetAsync(key, data)

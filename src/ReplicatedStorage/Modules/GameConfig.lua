@@ -1,15 +1,15 @@
 local GameConfig = {}
 
 -- Base / Safe Zone
-GameConfig.BASE_SIZE = Vector3.new(80, 1, 80)
+GameConfig.BASE_SIZE = Vector3.new(200, 1, 200)
 GameConfig.BASE_COLOR = Color3.fromRGB(85, 170, 85)
 GameConfig.BOUNDARY_COLOR = Color3.fromRGB(255, 50, 50)
-GameConfig.BOUNDARY_HEIGHT = 8
-GameConfig.BASE_SPACING = 200 -- distance between player bases on X axis
+GameConfig.BOUNDARY_HEIGHT = 10
+GameConfig.BASE_SPACING = 400 -- distance between player bases on X axis
 
 -- Abyss / Mission
-GameConfig.PLATFORM_WIDTH = 20 -- depth (Z) of each landing platform
-GameConfig.PLATFORM_LENGTH = 80 -- width (X) of each landing platform
+GameConfig.PLATFORM_WIDTH = 25 -- depth (Z) of each landing platform
+GameConfig.PLATFORM_LENGTH = 100 -- width (X) of each landing platform (matches wider base)
 GameConfig.PLATFORM_HEIGHT = 1
 GameConfig.PLATFORM_COLOR = Color3.fromRGB(120, 120, 120)
 GameConfig.KILL_ZONE_Y = -50

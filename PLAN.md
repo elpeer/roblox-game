@@ -33,9 +33,7 @@ src/
 │       ├── PurchaseItem.lua
 │       └── MissionComplete.lua
 └── Workspace/
-    ├── SpawnArea/                     -- אזור הכניסה
-    ├── PlayerBases/                   -- תבנית בסיס שחקן
-    └── MissionArea/                   -- אזור המשימות (תהומות)
+    ├── PlayerBases/                   -- תבנית בסיס שחקן (Safe Zone + תהומות)
 ```
 
 ---
@@ -64,15 +62,22 @@ src/
 
 ---
 
-## Phase 2: Player Base (בסיס שחקן)
-### 2.1 - Base Template
+## Phase 2: Player Base & Safe Zone (בסיס שחקן ואזור בטוח)
+### 2.1 - Base Template (Safe Zone)
 - [ ] יצירת תבנית בסיס שכוללת:
-  - משטח ריצפה בסיסי
+  - משטח ריצפה בסיסי — זהו ה-**SAFE ZONE**
   - מיקום להליכון
   - אזור הצגת דמויות ברינרוט שנאספו
-  - טלפורט לאזור המשימות
+  - **קו גבול ברור** שמסמן את סוף ה-Safe Zone
+  - מעבר לקו הגבול → מתחיל אזור התהומות (המשימות)
 
-### 2.2 - Base Assignment
+### 2.2 - Safe Zone Boundary
+- [ ] קו גבול ויזואלי (קו צבעוני / גדר / שלט)
+- [ ] כשהשחקן חוצה את הגבול → הוא רואה את התהום הראשון ויכול להתחיל לקפוץ
+- [ ] חזרה לSafe Zone תמיד אפשרית (ריצה חזרה)
+- [ ] נפילה לתהום → טלפורט חזרה ל-Safe Zone
+
+### 2.3 - Base Assignment
 - [ ] כשחקן מצטרף → שיבוט בסיס חדש ומיקומו
 - [ ] כשחקן עוזב → ניקוי הבסיס
 
@@ -98,26 +103,56 @@ src/
 ---
 
 ## Phase 4: Mission System - Abyss Jumping (מערכת משימות - קפיצה מעל תהומות)
-### 4.1 - Abyss Generation
-- [ ] יצירת שלבים עם תהומות בגדלים עולים:
-  | שלב | רוחב התהום (studs) | דמות ברינרוט שמקבלים |
-  |------|-------------------|----------------------|
-  | 1 | 8 | Skibidi Toilet |
-  | 2 | 12 | Baby Gronk |
-  | 3 | 18 | Sigma Boy |
-  | 4 | 25 | Duke Dennis |
-  | 5 | 34 | Livvy Dunne |
-  | 6 | 45 | Kai Cenat |
-  | 7 | 58 | Fanum Tax |
-  | 8 | 73 | Ohio Final Boss |
+### 4.1 - Abyss Generation (תהומות בגדלים עולים)
+- [ ] התהומות ממוקמות מעבר לגבול ה-Safe Zone, אחת אחרי השנייה
+- [ ] כל תהום גדולה יותר מהקודמת
+- [ ] רוחב התהומות גדל בהדרגה:
+  | תהום # | רוחב (studs) | כמות ברינרוטים שמקבלים |
+  |---------|-------------|------------------------|
+  | 1 | 8 | 1 |
+  | 2 | 10 | 1 |
+  | 3 | 12 | 1-2 |
+  | 4 | 15 | 1-2 |
+  | 5 | 18 | 2 |
+  | 6 | 21 | 2 |
+  | 7 | 24 | 2-3 |
+  | 8 | 28 | 2-3 |
+  | 9 | 32 | 3 |
+  | 10 | 36 | 3 |
+  | 11 | 40 | 3-4 |
+  | 12 | 45 | 3-4 |
+  | 13 | 50 | 4 |
+  | 14 | 55 | 4-5 |
+  | 15 | 60 | 5 |
+  | 16 | 66 | 5 |
+  | 17 | 72 | 5-6 |
+  | 18 | 78 | 6 |
+  | 19 | 85 | 6-7 |
+  | 20 | 92 | 7 |
+  | ... | +8 per abyss | ... |
 
-### 4.2 - Jump Mechanics
+### 4.2 - Brainrot Tier Upgrade (שדרוג סוג ברינרוט כל 5 תהומות)
+- [ ] כל 5 תהומות שהשחקן עובר → סוג הברינרוט שמשתגר עולה לטייר הבא
+  | תהומות | טייר ברינרוט | דוגמאות |
+  |--------|-------------|---------|
+  | 1-5 | Common | Noobini Pizzanini, Lirili Larila, Tim Cheesee... |
+  | 6-10 | Rare | Trippi Troppi, Boneca Ambalabu, Cacto Hipopotamo... |
+  | 11-15 | Epic | Brr Brr Patapim, Cappuccino Assassino, Mangolin... |
+  | 16-20 | Legendary | Sigma Boy, Ballerina Cappuccina, Chimpanzini Bananini... |
+  | 21-25 | Mythic | Frigo Camelo, Gorillo Subwoofero, Orangutini... |
+  | 26-30 | Brainrot God | Tralalero Tralala, Cocofanto Elefanto, Dragoni Canneloni... |
+  | 31-35 | Secret | La Vacca Saturno Saturnita, Nuclearo Dinossauro... |
+  | 36+ | OG | Skibidi Toilet, Meowl, Strawberry Elephant |
+- [ ] בכל תהום מספר הברינרוטים שמקבלים הוא אקראי (לפי הטבלה למעלה)
+- [ ] הברינרוט הספציפי שמקבלים הוא אקראי מתוך הטייר הנוכחי
+
+### 4.3 - Jump Mechanics
 - [ ] מהירות השחקן משפיעה על מרחק הקפיצה
-- [ ] גילוי נפילה לתהום → טלפורט חזרה לתחילת השלב
-- [ ] גילוי הגעה לצד השני → מעבר שלב + קבלת דמות ברינרוט
+- [ ] גילוי נפילה לתהום → טלפורט חזרה ל-Safe Zone
+- [ ] גילוי הגעה לצד השני → קבלת ברינרוטים + המשך לתהום הבאה
 - [ ] אפקטים ויזואליים (חלקיקים, צלילים)
 
-### 4.3 - Speed-Jump Relationship
+### 4.4 - Speed-Jump Relationship
 - [ ] נוסחת קפיצה: JumpPower = BaseJump + (Speed * 0.1)
 - [ ] WalkSpeed = BaseWalk + Speed
 - [ ] ככל שהמהירות גבוהה יותר → קל יותר לעבור תהומות
@@ -125,27 +160,133 @@ src/
 ---
 
 ## Phase 5: Brainrot Collection (אוסף דמויות ברינרוט)
-### 5.1 - Brainrot Characters
-- [ ] נתוני כל דמות:
-  | דמות | הכנסה לדקה | שלב נדרש |
-  |------|------------|----------|
-  | Skibidi Toilet | 5 coins/min | 1 |
-  | Baby Gronk | 12 coins/min | 2 |
-  | Sigma Boy | 25 coins/min | 3 |
-  | Duke Dennis | 50 coins/min | 4 |
-  | Livvy Dunne | 100 coins/min | 5 |
-  | Kai Cenat | 200 coins/min | 6 |
-  | Fanum Tax | 400 coins/min | 7 |
-  | Ohio Final Boss | 1000 coins/min | 8 |
+### 5.1 - Brainrot Rarities & Characters (טיירים ודמויות)
+בהשראת משחקי ברינרוט פופולריים (Steal a Brainrot, Brainrot Evolution)
+
+#### Common (נפוץ) — הכנסה: 1-14 coins/sec
+| # | דמות |
+|---|------|
+| 1 | Noobini Pizzanini |
+| 2 | Lirili Larila |
+| 3 | Tim Cheesee |
+| 4 | Frurifrura |
+| 5 | Talpa Di Fero |
+| 6 | Svivina Borbardino |
+| 7 | Noobini Santanini |
+| 8 | Raccooni Jandelini |
+| 9 | Pipi Kiwi |
+| 10 | Tartaragno |
+| 11 | Pipi Corni |
+
+#### Rare (נדיר) — הכנסה: 15-75 coins/sec
+| # | דמות |
+|---|------|
+| 1 | Trippi Troppi |
+| 2 | Gangster Footera |
+| 3 | Bandito Bobritto |
+| 4 | Boneca Ambalabu |
+| 5 | Cacto Hipopotamo |
+| 6 | Ta Ta Ta Ta Sahur |
+| 7 | Cupkake Koala |
+| 8 | Tric Tric Baraboom |
+| 9 | Frogo Elfo |
+| 10 | Pipi Avocado |
+| 11 | Pinealotto Fruttarino |
+
+#### Epic (אפי) — הכנסה: 80-300 coins/sec
+| # | דמות |
+|---|------|
+| 1 | Cappuccino Assassino |
+| 2 | Bandito Axolito |
+| 3 | Brr Brr Patapim |
+| 4 | Avocadini Antilopini |
+| 5 | Trullimero Trulicina |
+| 6 | Bambini Crostini |
+| 7 | Malame Amarele |
+| 8 | Bananita Dolphinita |
+| 9 | Perochello Lemonchello |
+| 10 | Brri Brri Bicus Dicus Bombicus |
+| 11 | Avocadini Guffo |
+| 12 | Ti Ti Ti Ti Sahur |
+| 13 | Mangolin |
+
+#### Legendary (אגדי) — הכנסה: 300-1,800 coins/sec
+| # | דמות |
+|---|------|
+| 1 | Burbaloni Loliloli |
+| 2 | Chimpanzini Bananini |
+| 3 | Ballerina Cappuccina |
+| 4 | Chef Crabracadabra |
+| 5 | Lionel Cactuseli |
+| 6 | Glorbo Fruttodillo |
+| 7 | Blueberrenni Octopusini |
+| 8 | Cocosino Mamá |
+| 9 | Pandaccini Bananini |
+| 10 | Quackula |
+| 11 | Sigma Boy |
+| 12 | Sigma Girl |
+| 13 | Chocco Bunny |
+| 14 | Puffaball |
+| 15 | Sealo Regalo |
+| 16 | Buho De Fuego |
+| 17 | Strawberrlli Flamingelli |
+| 18 | Clickerino Clabo |
+
+#### Mythic (מיתי) — הכנסה: 1,900-17,000 coins/sec
+| # | דמות |
+|---|------|
+| 1 | Frigo Camelo |
+| 2 | Cavallo Virtuoso |
+| 3 | Orangutini |
+| 4 | Ananassini |
+| 5 | Rhino Toasterino |
+| 6 | Borbadiro |
+| 7 | Cocrodilo |
+| 8 | Tigrillini |
+| 9 | Watermelini |
+| 10 | Gorillo Subwoofero |
+
+#### Brainrot God (אל הברינרוט) — הכנסה: 17,500-295,000 coins/sec
+| # | דמות |
+|---|------|
+| 1 | Cocofanto Elefanto |
+| 2 | Giraffa Celeste |
+| 3 | Tralalero Tralala |
+| 4 | Matteo Tipi Topi Taco |
+| 5 | Orcalero Orcala |
+| 6 | Tralalita Tralala |
+| 7 | Graipuss Medusi |
+| 8 | Garamararambraramanmararaman |
+| 9 | Dragoni Canneloni |
+| 10 | Tung Tung Tung Sahur |
+
+#### Secret (סודי) — הכנסה: 300,000-350,000,000 coins/sec
+| # | דמות |
+|---|------|
+| 1 | La Vacca Saturno Saturnita |
+| 2 | Nuclearo Dinossauro |
+| 3 | Dragon Gingerini |
+| 4 | Baby Gronk |
+| 5 | Fanum Tax |
+
+#### OG (מקורי - הכי נדיר) — הכנסה: 400,000,000+ coins/sec
+| # | דמות |
+|---|------|
+| 1 | Skibidi Toilet |
+| 2 | Meowl |
+| 3 | Strawberry Elephant |
 
 ### 5.2 - Passive Income
-- [ ] כל דמות שנאספה מייצרת כסף אוטומטית
+- [ ] כל דמות שנאספה מייצרת כסף אוטומטית (לפי הטבלאות למעלה)
+- [ ] ככל שהטייר גבוה יותר → הכנסה גבוהה יותר
 - [ ] הכסף מצטבר גם כשהשחקן במשימה
-- [ ] הצגת סה"כ הכנסה לדקה בHUD
+- [ ] הצגת סה"כ הכנסה לשנייה בHUD
+- [ ] אם יש לשחקן כמה עותקים מאותו ברינרוט → ההכנסה מצטברת
 
 ### 5.3 - Display in Base
 - [ ] הדמויות שנאספו מוצגות בבסיס השחקן
 - [ ] מודלים תלת-ממדיים פשוטים לכל דמות
+- [ ] צבע זוהר לפי נדירות (Common=לבן, Rare=כחול, Epic=סגול, Legendary=צהוב, Mythic=אדום, God=זהב, Secret=קשת, OG=יהלום)
 
 ---
 
@@ -183,9 +324,10 @@ src/
 - [ ] סימון מה כבר נקנה
 
 ### 7.4 - Mission GUI
-- [ ] הצגת שלב נוכחי
-- [ ] הדמות שאפשר להשיג
-- [ ] כפתור "לך למשימה"
+- [ ] הצגת מספר תהום נוכחי
+- [ ] הטייר הנוכחי של ברינרוט (Common/Rare/Epic...)
+- [ ] כמה תהומות נשארו עד שדרוג טייר
+- [ ] הצגת הברינרוטים שהושגו בתהום האחרון
 
 ---
 

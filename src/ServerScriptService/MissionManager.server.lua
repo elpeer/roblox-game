@@ -584,21 +584,61 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 		end
 	end)
 
-	-- Side walls (invisible collision)
-	for _, xOffset in ipairs({-GameConfig.PLATFORM_LENGTH / 2 - 1, GameConfig.PLATFORM_LENGTH / 2 + 1}) do
+	-- Side walls (tall visible concrete walls forming a corridor)
+	local corridorWallHeight = 50
+	local corridorWallThickness = 4
+	local stageLength = abyssWidth + GameConfig.PLATFORM_WIDTH * 2
+	local stageCenterZ = startZ + stageLength / 2
+
+	for wallIdx, xOffset in ipairs({-GameConfig.PLATFORM_LENGTH / 2 - corridorWallThickness / 2, GameConfig.PLATFORM_LENGTH / 2 + corridorWallThickness / 2}) do
+		-- Main wall
 		local wall = Instance.new("Part")
 		wall.Name = "SideWall_" .. userId .. "_" .. abyssNum
-		wall.Size = Vector3.new(1, 60, abyssWidth + GameConfig.PLATFORM_WIDTH * 2 + 20)
+		wall.Size = Vector3.new(corridorWallThickness, corridorWallHeight, stageLength)
 		wall.Position = Vector3.new(
 			basePosition.X + xOffset,
-			basePosition.Y + 15,
-			startZ + GameConfig.PLATFORM_WIDTH + abyssWidth / 2
+			basePosition.Y + corridorWallHeight / 2 - 5,
+			stageCenterZ
 		)
 		wall.Anchored = true
-		wall.Transparency = 1
-		wall.CanCollide = true
+		wall.Color = Color3.fromRGB(90, 85, 80)
+		wall.Material = Enum.Material.Concrete
 		wall.Parent = workspace
 		table.insert(parts, wall)
+
+		-- Horizontal accent lines on wall (at intervals)
+		for _, accentY in ipairs({8, 20, 32}) do
+			local accent = Instance.new("Part")
+			accent.Name = "WallAccent_" .. userId .. "_" .. abyssNum
+			accent.Size = Vector3.new(0.5, 0.6, stageLength)
+			accent.Position = Vector3.new(
+				basePosition.X + xOffset + (wallIdx == 1 and (corridorWallThickness / 2 + 0.1) or -(corridorWallThickness / 2 + 0.1)),
+				basePosition.Y + accentY,
+				stageCenterZ
+			)
+			accent.Anchored = true
+			accent.CanCollide = false
+			accent.Color = Color3.fromRGB(70, 65, 60)
+			accent.Material = Enum.Material.Concrete
+			accent.Parent = workspace
+			table.insert(parts, accent)
+		end
+
+		-- Neon strip at top of wall
+		local topStrip = Instance.new("Part")
+		topStrip.Name = "WallTopStrip_" .. userId .. "_" .. abyssNum
+		topStrip.Size = Vector3.new(corridorWallThickness + 1, 0.5, stageLength)
+		topStrip.Position = Vector3.new(
+			basePosition.X + xOffset,
+			basePosition.Y + corridorWallHeight - 5 + 0.25,
+			stageCenterZ
+		)
+		topStrip.Anchored = true
+		topStrip.CanCollide = false
+		topStrip.Color = tierColor
+		topStrip.Material = Enum.Material.Neon
+		topStrip.Parent = workspace
+		table.insert(parts, topStrip)
 	end
 
 	local endZ = landingZ + GameConfig.PLATFORM_WIDTH

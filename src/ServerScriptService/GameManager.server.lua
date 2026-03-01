@@ -213,32 +213,32 @@ function GameManager.CreateBase(player: Player): Vector3
 	end
 
 	-- ============================
-	-- PERIMETER WALLS (clean modern walls)
+	-- PERIMETER WALLS (tall solid boundary walls)
 	-- ============================
-	local wallHeight = 5
-	local wallThickness = 1.5
+	local wallHeight = 45
+	local wallThickness = 4
 
+	-- Left, Right, Back walls around the base
 	for _, wallInfo in ipairs({
 		{name = "WallLeft", size = Vector3.new(wallThickness, wallHeight, bsZ), offset = Vector3.new(-bsX/2, wallHeight/2, 0)},
 		{name = "WallRight", size = Vector3.new(wallThickness, wallHeight, bsZ), offset = Vector3.new(bsX/2, wallHeight/2, 0)},
-		{name = "WallBack", size = Vector3.new(bsX, wallHeight, wallThickness), offset = Vector3.new(0, wallHeight/2, -bsZ/2)},
+		{name = "WallBack", size = Vector3.new(bsX + wallThickness * 2, wallHeight, wallThickness), offset = Vector3.new(0, wallHeight/2, -bsZ/2)},
 	}) do
 		local wall = Instance.new("Part")
 		wall.Name = wallInfo.name .. "_" .. userId
 		wall.Size = wallInfo.size
 		wall.Position = basePosition + wallInfo.offset
 		wall.Anchored = true
-		wall.Color = Color3.fromRGB(220, 220, 230)
-		wall.Material = Enum.Material.SmoothPlastic
-		wall.Transparency = 0.3
+		wall.Color = Color3.fromRGB(90, 85, 80)
+		wall.Material = Enum.Material.Concrete
 		wall.Parent = workspace
 		table.insert(parts, wall)
 
 		-- Neon strip on top of wall
 		local strip = Instance.new("Part")
 		strip.Name = wallInfo.name .. "Strip_" .. userId
-		strip.Size = Vector3.new(wallInfo.size.X, 0.3, wallInfo.size.Z)
-		strip.Position = basePosition + wallInfo.offset + Vector3.new(0, wallHeight/2 + 0.15, 0)
+		strip.Size = Vector3.new(wallInfo.size.X, 0.5, wallInfo.size.Z)
+		strip.Position = basePosition + wallInfo.offset + Vector3.new(0, wallHeight/2 + 0.25, 0)
 		strip.Anchored = true
 		strip.CanCollide = false
 		strip.Color = Color3.fromRGB(0, 180, 255)
@@ -247,8 +247,40 @@ function GameManager.CreateBase(player: Player): Vector3
 		table.insert(parts, strip)
 	end
 
+	-- Front transition walls (close the gap between base width and abyss corridor)
+	-- Base is 200 wide, abyss corridor is PLATFORM_LENGTH (100) wide
+	local corridorHalfWidth = GameConfig.PLATFORM_LENGTH / 2 -- 50
+	local frontWallWidth = (bsX / 2) - corridorHalfWidth -- 50 studs each side
+	if frontWallWidth > 0 then
+		for _, fwInfo in ipairs({
+			{name = "FrontWallLeft", xOffset = -(corridorHalfWidth + frontWallWidth / 2)},
+			{name = "FrontWallRight", xOffset = (corridorHalfWidth + frontWallWidth / 2)},
+		}) do
+			local frontWall = Instance.new("Part")
+			frontWall.Name = fwInfo.name .. "_" .. userId
+			frontWall.Size = Vector3.new(frontWallWidth, wallHeight, wallThickness)
+			frontWall.Position = basePosition + Vector3.new(fwInfo.xOffset, wallHeight / 2, bsZ / 2)
+			frontWall.Anchored = true
+			frontWall.Color = Color3.fromRGB(90, 85, 80)
+			frontWall.Material = Enum.Material.Concrete
+			frontWall.Parent = workspace
+			table.insert(parts, frontWall)
+
+			local fwStrip = Instance.new("Part")
+			fwStrip.Name = fwInfo.name .. "Strip_" .. userId
+			fwStrip.Size = Vector3.new(frontWallWidth, 0.5, wallThickness)
+			fwStrip.Position = basePosition + Vector3.new(fwInfo.xOffset, wallHeight + 0.25, bsZ / 2)
+			fwStrip.Anchored = true
+			fwStrip.CanCollide = false
+			fwStrip.Color = Color3.fromRGB(0, 180, 255)
+			fwStrip.Material = Enum.Material.Neon
+			fwStrip.Parent = workspace
+			table.insert(parts, fwStrip)
+		end
+	end
+
 	-- ============================
-	-- CORNER PILLARS (modern glowing pillars)
+	-- CORNER PILLARS (tall glowing pillars matching wall height)
 	-- ============================
 	local pillarPositions = {
 		Vector3.new(-bsX/2, 0, -bsZ/2),
@@ -259,19 +291,19 @@ function GameManager.CreateBase(player: Player): Vector3
 	for i, offset in ipairs(pillarPositions) do
 		local pillar = Instance.new("Part")
 		pillar.Name = "Pillar_" .. userId .. "_" .. i
-		pillar.Size = Vector3.new(4, 10, 4)
-		pillar.Position = basePosition + offset + Vector3.new(0, 5, 0)
+		pillar.Size = Vector3.new(5, wallHeight + 2, 5)
+		pillar.Position = basePosition + offset + Vector3.new(0, (wallHeight + 2) / 2, 0)
 		pillar.Anchored = true
-		pillar.Color = Color3.fromRGB(240, 240, 250)
-		pillar.Material = Enum.Material.SmoothPlastic
+		pillar.Color = Color3.fromRGB(110, 105, 100)
+		pillar.Material = Enum.Material.Concrete
 		pillar.Parent = workspace
 		table.insert(parts, pillar)
 
 		-- Glowing top cap
 		local cap = Instance.new("Part")
 		cap.Name = "PillarCap_" .. userId .. "_" .. i
-		cap.Size = Vector3.new(5, 1.5, 5)
-		cap.Position = basePosition + offset + Vector3.new(0, 10.75, 0)
+		cap.Size = Vector3.new(6, 1.5, 6)
+		cap.Position = basePosition + offset + Vector3.new(0, wallHeight + 3.75, 0)
 		cap.Anchored = true
 		cap.Color = Color3.fromRGB(0, 180, 255)
 		cap.Material = Enum.Material.Neon
@@ -280,8 +312,8 @@ function GameManager.CreateBase(player: Player): Vector3
 
 		local pillarLight = Instance.new("PointLight")
 		pillarLight.Color = Color3.fromRGB(0, 180, 255)
-		pillarLight.Range = 25
-		pillarLight.Brightness = 0.5
+		pillarLight.Range = 30
+		pillarLight.Brightness = 0.6
 		pillarLight.Parent = cap
 	end
 

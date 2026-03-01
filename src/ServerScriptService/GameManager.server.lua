@@ -697,17 +697,17 @@ function GameManager.CreateBase(player: Player): Vector3
 	end
 
 	-- ============================
-	-- SPAWN POINT
+	-- SPAWN POINT (enabled, collidable so players land on it)
 	-- ============================
 	local spawnLocation = Instance.new("SpawnLocation")
 	spawnLocation.Name = "PlayerSpawn_" .. userId
-	spawnLocation.Size = Vector3.new(8, 1, 8)
-	spawnLocation.Position = basePosition + Vector3.new(0, 1, -30)
+	spawnLocation.Size = Vector3.new(12, 1, 12)
+	spawnLocation.Position = basePosition + Vector3.new(0, 1.5, -30)
 	spawnLocation.Anchored = true
 	spawnLocation.Transparency = 1
-	spawnLocation.CanCollide = false
+	spawnLocation.CanCollide = true
 	spawnLocation.TeamColor = BrickColor.new("Medium stone grey")
-	spawnLocation.Enabled = false
+	spawnLocation.Enabled = true
 	spawnLocation.Parent = workspace
 	table.insert(parts, spawnLocation)
 
@@ -1063,6 +1063,28 @@ end
 -- 4. Player Join / Leave
 ------------------------------------------------------------
 local function onPlayerAdded(player: Player)
+	-- Track base readiness
+	local basePosition = nil
+	local baseReady = false
+
+	-- Helper: teleport player to base once ready
+	local function teleportToBase(character)
+		while not baseReady do task.wait(0.1) end
+		task.wait(0.1) -- small delay for character to fully load
+		local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
+		if humanoidRootPart then
+			humanoidRootPart.CFrame = CFrame.new(basePosition + Vector3.new(0, 5, -30))
+		end
+		while not _G.EconomyManager do task.wait(0.1) end
+		_G.EconomyManager.ApplySpeedToCharacter(player)
+	end
+
+	-- Connect CharacterAdded EARLY (before waiting for systems)
+	-- so we never miss the first character spawn
+	player.CharacterAdded:Connect(function(character)
+		teleportToBase(character)
+	end)
+
 	-- Wait for DataManager
 	while not _G.DataManager do task.wait(0.1) end
 	local DataManager = _G.DataManager
@@ -1071,34 +1093,18 @@ local function onPlayerAdded(player: Player)
 	DataManager.LoadData(player)
 
 	-- Create base
-	local basePosition = GameManager.CreateBase(player)
+	basePosition = GameManager.CreateBase(player)
+	baseReady = true
 
 	-- Create abyss course
 	while not _G.MissionManager do task.wait(0.1) end
 	_G.MissionManager.CreateAbyssCourse(player, basePosition)
 
-	-- Teleport player to base
-	player.CharacterAdded:Connect(function(character)
-		task.wait(0.5)
-		local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
-		if humanoidRootPart then
-			humanoidRootPart.CFrame = CFrame.new(basePosition + Vector3.new(0, 5, -30))
-		end
-
-		-- Apply speed stats
-		task.wait(0.5)
-		while not _G.EconomyManager do task.wait(0.1) end
-		_G.EconomyManager.ApplySpeedToCharacter(player)
-	end)
-
 	-- If character already exists, teleport now
 	if player.Character then
-		local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-		if humanoidRootPart then
-			humanoidRootPart.CFrame = CFrame.new(basePosition + Vector3.new(0, 5, -30))
-		end
-		while not _G.EconomyManager do task.wait(0.1) end
-		_G.EconomyManager.ApplySpeedToCharacter(player)
+		task.spawn(function()
+			teleportToBase(player.Character)
+		end)
 	end
 
 	-- Send initial data to client

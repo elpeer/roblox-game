@@ -553,6 +553,9 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 	local displayCenter = Vector3.new(basePos.X + 55, basePos.Y + 3, basePos.Z - 20)
 	local BrainrotData = require(Modules:WaitForChild("BrainrotData"))
 
+	-- Folder for real brainrot models
+	local brainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotModels")
+
 	local index = 0
 	for brainrotName, count in pairs(data.collectedBrainrots) do
 		local brainrotInfo = BrainrotData.GetByName(brainrotName)
@@ -562,104 +565,160 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 			local modelPos = displayCenter + Vector3.new(-20 + col * 8, 0, -18 + row * 8)
 			local rarityColor = GameConfig.RARITY_COLORS[brainrotInfo.rarity] or Color3.new(1, 1, 1)
 
-			-- Create a character-like model (head + body + arms + legs)
-			local container = Instance.new("Model")
-			container.Name = "BrainrotModel_" .. userId
+			-- Try to use a real model from BrainrotModels folder
+			local container = nil
+			local adorneePart = nil
 
-			-- Body (torso)
-			local body = Instance.new("Part")
-			body.Name = "Body"
-			body.Size = Vector3.new(2, 2.5, 1.2)
-			body.Position = modelPos + Vector3.new(0, 2.25, 0)
-			body.Anchored = true
-			body.Color = rarityColor
-			body.Material = Enum.Material.SmoothPlastic
-			body.Parent = container
+			if brainrotModelsFolder then
+				local template = brainrotModelsFolder:FindFirstChild(brainrotName)
+				if template then
+					container = template:Clone()
+					container.Name = "BrainrotModel_" .. userId
 
-			-- Head
-			local head = Instance.new("Part")
-			head.Name = "Head"
-			head.Size = Vector3.new(1.8, 1.8, 1.8)
-			head.Shape = Enum.PartType.Ball
-			head.Position = modelPos + Vector3.new(0, 4.4, 0)
-			head.Anchored = true
-			head.Color = rarityColor
-			head.Material = Enum.Material.SmoothPlastic
-			head.Parent = container
+					-- Find primary part
+					local primaryPart = container.PrimaryPart
+					if not primaryPart then
+						for _, child in ipairs(container:GetDescendants()) do
+							if child:IsA("BasePart") then
+								primaryPart = child
+								container.PrimaryPart = primaryPart
+								break
+							end
+						end
+					end
 
-			-- Face (eyes and mouth on the head)
-			local face = Instance.new("Decal")
-			face.Name = "Face"
-			face.Texture = "rbxassetid://7075502596"
-			face.Face = Enum.NormalId.Front
-			face.Parent = head
+					if primaryPart then
+						-- Scale down for display (0.6x)
+						local displayScale = 0.6
+						for _, part in ipairs(container:GetDescendants()) do
+							if part:IsA("BasePart") then
+								part.Size = part.Size * displayScale
+							end
+						end
 
-			-- Left eye
-			local leftEye = Instance.new("Part")
-			leftEye.Name = "LeftEye"
-			leftEye.Size = Vector3.new(0.35, 0.35, 0.2)
-			leftEye.Position = modelPos + Vector3.new(-0.35, 4.6, 0.85)
-			leftEye.Anchored = true
-			leftEye.Color = Color3.new(0, 0, 0)
-			leftEye.Material = Enum.Material.SmoothPlastic
-			leftEye.Parent = container
+						-- Position the model
+						local offset = modelPos + Vector3.new(0, 2, 0) - primaryPart.Position
+						for _, part in ipairs(container:GetDescendants()) do
+							if part:IsA("BasePart") then
+								part.Position = part.Position + offset
+								part.Anchored = true
+								part.CanCollide = false
+							end
+						end
+						adorneePart = primaryPart
+					else
+						container:Destroy()
+						container = nil
+					end
+				end
+			end
 
-			-- Right eye
-			local rightEye = Instance.new("Part")
-			rightEye.Name = "RightEye"
-			rightEye.Size = Vector3.new(0.35, 0.35, 0.2)
-			rightEye.Position = modelPos + Vector3.new(0.35, 4.6, 0.85)
-			rightEye.Anchored = true
-			rightEye.Color = Color3.new(0, 0, 0)
-			rightEye.Material = Enum.Material.SmoothPlastic
-			rightEye.Parent = container
+			-- Fallback: build dummy model from parts
+			if not container then
+				container = Instance.new("Model")
+				container.Name = "BrainrotModel_" .. userId
 
-			-- Left arm
-			local leftArm = Instance.new("Part")
-			leftArm.Name = "LeftArm"
-			leftArm.Size = Vector3.new(0.8, 2, 0.8)
-			leftArm.Position = modelPos + Vector3.new(-1.4, 2.2, 0)
-			leftArm.Anchored = true
-			leftArm.Color = rarityColor
-			leftArm.Material = Enum.Material.SmoothPlastic
-			leftArm.Parent = container
+				-- Body (torso)
+				local body = Instance.new("Part")
+				body.Name = "Body"
+				body.Size = Vector3.new(2, 2.5, 1.2)
+				body.Position = modelPos + Vector3.new(0, 2.25, 0)
+				body.Anchored = true
+				body.Color = rarityColor
+				body.Material = Enum.Material.SmoothPlastic
+				body.Parent = container
 
-			-- Right arm
-			local rightArm = Instance.new("Part")
-			rightArm.Name = "RightArm"
-			rightArm.Size = Vector3.new(0.8, 2, 0.8)
-			rightArm.Position = modelPos + Vector3.new(1.4, 2.2, 0)
-			rightArm.Anchored = true
-			rightArm.Color = rarityColor
-			rightArm.Material = Enum.Material.SmoothPlastic
-			rightArm.Parent = container
+				-- Head
+				local head = Instance.new("Part")
+				head.Name = "Head"
+				head.Size = Vector3.new(1.8, 1.8, 1.8)
+				head.Shape = Enum.PartType.Ball
+				head.Position = modelPos + Vector3.new(0, 4.4, 0)
+				head.Anchored = true
+				head.Color = rarityColor
+				head.Material = Enum.Material.SmoothPlastic
+				head.Parent = container
 
-			-- Left leg
-			local leftLeg = Instance.new("Part")
-			leftLeg.Name = "LeftLeg"
-			leftLeg.Size = Vector3.new(0.9, 1.8, 0.9)
-			leftLeg.Position = modelPos + Vector3.new(-0.5, 0.9, 0)
-			leftLeg.Anchored = true
-			leftLeg.Color = rarityColor
-			leftLeg.Material = Enum.Material.SmoothPlastic
-			leftLeg.Parent = container
+				-- Face (eyes and mouth on the head)
+				local face = Instance.new("Decal")
+				face.Name = "Face"
+				face.Texture = "rbxassetid://7075502596"
+				face.Face = Enum.NormalId.Front
+				face.Parent = head
 
-			-- Right leg
-			local rightLeg = Instance.new("Part")
-			rightLeg.Name = "RightLeg"
-			rightLeg.Size = Vector3.new(0.9, 1.8, 0.9)
-			rightLeg.Position = modelPos + Vector3.new(0.5, 0.9, 0)
-			rightLeg.Anchored = true
-			rightLeg.Color = rarityColor
-			rightLeg.Material = Enum.Material.SmoothPlastic
-			rightLeg.Parent = container
+				-- Left eye
+				local leftEye = Instance.new("Part")
+				leftEye.Name = "LeftEye"
+				leftEye.Size = Vector3.new(0.35, 0.35, 0.2)
+				leftEye.Position = modelPos + Vector3.new(-0.35, 4.6, 0.85)
+				leftEye.Anchored = true
+				leftEye.Color = Color3.new(0, 0, 0)
+				leftEye.Material = Enum.Material.SmoothPlastic
+				leftEye.Parent = container
+
+				-- Right eye
+				local rightEye = Instance.new("Part")
+				rightEye.Name = "RightEye"
+				rightEye.Size = Vector3.new(0.35, 0.35, 0.2)
+				rightEye.Position = modelPos + Vector3.new(0.35, 4.6, 0.85)
+				rightEye.Anchored = true
+				rightEye.Color = Color3.new(0, 0, 0)
+				rightEye.Material = Enum.Material.SmoothPlastic
+				rightEye.Parent = container
+
+				-- Left arm
+				local leftArm = Instance.new("Part")
+				leftArm.Name = "LeftArm"
+				leftArm.Size = Vector3.new(0.8, 2, 0.8)
+				leftArm.Position = modelPos + Vector3.new(-1.4, 2.2, 0)
+				leftArm.Anchored = true
+				leftArm.Color = rarityColor
+				leftArm.Material = Enum.Material.SmoothPlastic
+				leftArm.Parent = container
+
+				-- Right arm
+				local rightArm = Instance.new("Part")
+				rightArm.Name = "RightArm"
+				rightArm.Size = Vector3.new(0.8, 2, 0.8)
+				rightArm.Position = modelPos + Vector3.new(1.4, 2.2, 0)
+				rightArm.Anchored = true
+				rightArm.Color = rarityColor
+				rightArm.Material = Enum.Material.SmoothPlastic
+				rightArm.Parent = container
+
+				-- Left leg
+				local leftLeg = Instance.new("Part")
+				leftLeg.Name = "LeftLeg"
+				leftLeg.Size = Vector3.new(0.9, 1.8, 0.9)
+				leftLeg.Position = modelPos + Vector3.new(-0.5, 0.9, 0)
+				leftLeg.Anchored = true
+				leftLeg.Color = rarityColor
+				leftLeg.Material = Enum.Material.SmoothPlastic
+				leftLeg.Parent = container
+
+				-- Right leg
+				local rightLeg = Instance.new("Part")
+				rightLeg.Name = "RightLeg"
+				rightLeg.Size = Vector3.new(0.9, 1.8, 0.9)
+				rightLeg.Position = modelPos + Vector3.new(0.5, 0.9, 0)
+				rightLeg.Anchored = true
+				rightLeg.Color = rarityColor
+				rightLeg.Material = Enum.Material.SmoothPlastic
+				rightLeg.Parent = container
+
+				container.PrimaryPart = body
+				adorneePart = head
+			end
 
 			-- Rarity glow effect
-			local glow = Instance.new("PointLight")
-			glow.Color = rarityColor
-			glow.Range = 8
-			glow.Brightness = 0.5
-			glow.Parent = body
+			local glowParent = adorneePart or container:FindFirstChildWhichIsA("BasePart")
+			if glowParent then
+				local glow = Instance.new("PointLight")
+				glow.Color = rarityColor
+				glow.Range = 8
+				glow.Brightness = 0.5
+				glow.Parent = glowParent
+			end
 
 			-- Platform/pedestal under the character
 			local pedestal = Instance.new("Part")
@@ -671,35 +730,37 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 			pedestal.Material = Enum.Material.SmoothPlastic
 			pedestal.Parent = container
 
-			container.PrimaryPart = body
 			container.Parent = workspace
 
 			-- Name and count label
-			local nameGui = Instance.new("BillboardGui")
-			nameGui.Size = UDim2.new(0, 180, 0, 50)
-			nameGui.StudsOffset = Vector3.new(0, 3.5, 0)
-			nameGui.Adornee = head
-			nameGui.AlwaysOnTop = false
-			nameGui.Parent = head
+			local labelPart = adorneePart or container:FindFirstChildWhichIsA("BasePart")
+			if labelPart then
+				local nameGui = Instance.new("BillboardGui")
+				nameGui.Size = UDim2.new(0, 180, 0, 50)
+				nameGui.StudsOffset = Vector3.new(0, 3.5, 0)
+				nameGui.Adornee = labelPart
+				nameGui.AlwaysOnTop = false
+				nameGui.Parent = labelPart
 
-			local nameLabel = Instance.new("TextLabel")
-			nameLabel.Size = UDim2.new(1, 0, 0.55, 0)
-			nameLabel.BackgroundTransparency = 1
-			nameLabel.Text = brainrotName
-			nameLabel.TextColor3 = rarityColor
-			nameLabel.TextScaled = true
-			nameLabel.Font = Enum.Font.GothamBold
-			nameLabel.Parent = nameGui
+				local nameLabel = Instance.new("TextLabel")
+				nameLabel.Size = UDim2.new(1, 0, 0.55, 0)
+				nameLabel.BackgroundTransparency = 1
+				nameLabel.Text = brainrotName
+				nameLabel.TextColor3 = rarityColor
+				nameLabel.TextScaled = true
+				nameLabel.Font = Enum.Font.GothamBold
+				nameLabel.Parent = nameGui
 
-			local countLabel = Instance.new("TextLabel")
-			countLabel.Size = UDim2.new(1, 0, 0.45, 0)
-			countLabel.Position = UDim2.new(0, 0, 0.55, 0)
-			countLabel.BackgroundTransparency = 1
-			countLabel.Text = "x" .. count
-			countLabel.TextColor3 = Color3.new(1, 1, 1)
-			countLabel.TextScaled = true
-			countLabel.Font = Enum.Font.Gotham
-			countLabel.Parent = nameGui
+				local countLabel = Instance.new("TextLabel")
+				countLabel.Size = UDim2.new(1, 0, 0.45, 0)
+				countLabel.Position = UDim2.new(0, 0, 0.55, 0)
+				countLabel.BackgroundTransparency = 1
+				countLabel.Text = "x" .. count
+				countLabel.TextColor3 = Color3.new(1, 1, 1)
+				countLabel.TextScaled = true
+				countLabel.Font = Enum.Font.Gotham
+				countLabel.Parent = nameGui
+			end
 
 			index = index + 1
 		end

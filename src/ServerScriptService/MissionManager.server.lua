@@ -23,6 +23,168 @@ MissionManager.CarriedBrainrots = {} -- [userId] = model
 -- Number of abyss stages to render ahead
 local STAGES_AHEAD = 3
 
+-- Folder for real brainrot models (created if missing)
+local brainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotModels")
+
+------------------------------------------------------------
+-- Helper: Try to clone a real model from BrainrotModels folder
+-- Returns a cloned model positioned at `pos`, or nil if not found
+------------------------------------------------------------
+local function tryGetRealModel(name, pos, rarityColor, scale, userId)
+	if not brainrotModelsFolder then return nil end
+	local template = brainrotModelsFolder:FindFirstChild(name)
+	if not template then return nil end
+
+	local model = template:Clone()
+	model.Name = "AbyssBrainrot_" .. userId
+
+	-- Find the primary part or first BasePart
+	local primaryPart = model.PrimaryPart
+	if not primaryPart then
+		for _, child in ipairs(model:GetDescendants()) do
+			if child:IsA("BasePart") then
+				primaryPart = child
+				model.PrimaryPart = primaryPart
+				break
+			end
+		end
+	end
+	if not primaryPart then return nil end
+
+	-- Scale the model if needed (scale=1 means original size)
+	if scale and scale ~= 1 then
+		for _, part in ipairs(model:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Size = part.Size * scale
+			end
+		end
+	end
+
+	-- Position the model
+	local offset = pos + Vector3.new(0, 2.5, 0) - primaryPart.Position
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Position = part.Position + offset
+			part.Anchored = true
+			part.CanCollide = false
+		end
+	end
+
+	-- Add glow
+	local glow = Instance.new("PointLight")
+	glow.Color = rarityColor
+	glow.Range = 12
+	glow.Brightness = 0.8
+	glow.Parent = primaryPart
+
+	-- Add name label
+	local nameGui = Instance.new("BillboardGui")
+	nameGui.Size = UDim2.new(0, 200, 0, 50)
+	nameGui.StudsOffset = Vector3.new(0, 4, 0)
+	nameGui.Adornee = primaryPart
+	nameGui.AlwaysOnTop = true
+	nameGui.Parent = primaryPart
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 1, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = name
+	nameLabel.TextColor3 = rarityColor
+	nameLabel.TextScaled = true
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Parent = nameGui
+
+	return model
+end
+
+------------------------------------------------------------
+-- Helper: Try to clone a real model as a mini carried version
+-- Returns a model welded to the player's head, or nil if not found
+------------------------------------------------------------
+local function tryGetRealCarryModel(name, head, rarityColor, userId)
+	if not brainrotModelsFolder then return nil end
+	local template = brainrotModelsFolder:FindFirstChild(name)
+	if not template then return nil end
+
+	local model = template:Clone()
+	model.Name = "CarriedBrainrot_" .. userId
+
+	-- Find the primary part
+	local primaryPart = model.PrimaryPart
+	if not primaryPart then
+		for _, child in ipairs(model:GetDescendants()) do
+			if child:IsA("BasePart") then
+				primaryPart = child
+				model.PrimaryPart = primaryPart
+				break
+			end
+		end
+	end
+	if not primaryPart then return nil end
+
+	-- Scale down to mini size (0.4x)
+	local miniScale = 0.4
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Size = part.Size * miniScale
+			part.Anchored = false
+			part.CanCollide = false
+		end
+	end
+
+	-- Position above head
+	local targetPos = head.Position + Vector3.new(0, 3, 0)
+	local offset = targetPos - primaryPart.Position
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CFrame = part.CFrame + offset
+		end
+	end
+
+	-- Weld all parts to primary part
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") and part ~= primaryPart then
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = primaryPart
+			weld.Part1 = part
+			weld.Parent = primaryPart
+		end
+	end
+
+	-- Weld primary part to head
+	local headWeld = Instance.new("WeldConstraint")
+	headWeld.Part0 = head
+	headWeld.Part1 = primaryPart
+	headWeld.Parent = head
+
+	-- Add glow
+	local glow = Instance.new("PointLight")
+	glow.Color = rarityColor
+	glow.Range = 8
+	glow.Brightness = 0.6
+	glow.Parent = primaryPart
+
+	-- Add name label
+	local nameGui = Instance.new("BillboardGui")
+	nameGui.Size = UDim2.new(0, 150, 0, 30)
+	nameGui.StudsOffset = Vector3.new(0, 2, 0)
+	nameGui.Adornee = primaryPart
+	nameGui.AlwaysOnTop = true
+	nameGui.Parent = primaryPart
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 1, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = name
+	nameLabel.TextColor3 = rarityColor
+	nameLabel.TextScaled = true
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Parent = nameGui
+
+	model.Parent = workspace
+	return model
+end
+
 local function getDataManager()
 	while not _G.DataManager do task.wait(0.1) end
 	return _G.DataManager
@@ -46,8 +208,16 @@ end
 
 ------------------------------------------------------------
 -- Helper: Create a brainrot character model at a position
+-- Tries to use a real model from BrainrotModels folder first
 ------------------------------------------------------------
 local function createBrainrotCharacterModel(name, pos, rarityColor, userId)
+	-- Try real model first
+	local realModel = tryGetRealModel(name, pos, rarityColor, 1, userId)
+	if realModel then
+		return realModel
+	end
+
+	-- Fallback: build a dummy model from parts
 	local container = Instance.new("Model")
 	container.Name = "AbyssBrainrot_" .. userId
 
@@ -424,7 +594,14 @@ function MissionManager.CarryBrainrot(player: Player, brainrotName: string, rari
 	local head = character:FindFirstChild("Head")
 	if not head then return end
 
-	-- Create a mini brainrot model to sit on the player's head
+	-- Try real model first
+	local realCarry = tryGetRealCarryModel(brainrotName, head, rarityColor, userId)
+	if realCarry then
+		MissionManager.CarriedBrainrots[userId] = realCarry
+		return
+	end
+
+	-- Fallback: Create a mini brainrot model to sit on the player's head
 	local carryModel = Instance.new("Model")
 	carryModel.Name = "CarriedBrainrot_" .. userId
 

@@ -92,6 +92,16 @@ for _, name in ipairs(remoteNames) do
 end
 
 ------------------------------------------------------------
+-- Clean up default workspace objects (Baseplate, SpawnLocation)
+-- These come from Roblox Studio by default and conflict with our bases
+------------------------------------------------------------
+for _, child in ipairs(workspace:GetChildren()) do
+	if child:IsA("SpawnLocation") or child.Name == "Baseplate" or child.Name == "SpawnLocation" then
+		child:Destroy()
+	end
+end
+
+------------------------------------------------------------
 -- 2. Create Player Base
 ------------------------------------------------------------
 function GameManager.CreateBase(player: Player): Vector3

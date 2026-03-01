@@ -32,6 +32,8 @@ local remoteNames = {
 	"DropBrainrot",        -- Client → Server (drop carried brainrot)
 	"CarryUpdate",         -- Server → Client (notify carry state change)
 	"PlaceBrainrots",      -- Client → Server (place inventory brainrots on stage)
+	"PlaceSingleBrainrot", -- Client → Server (place one brainrot from inventory)
+	"ReturnBrainrot",      -- Client → Server (return one brainrot from stage to inventory)
 }
 
 ------------------------------------------------------------
@@ -438,10 +440,10 @@ function GameManager.CreateBase(player: Player): Vector3
 	archTopNeon.Parent = workspace
 	table.insert(parts, archTopNeon)
 
-	-- Arch sign
+	-- Arch floating text
 	local signGui = Instance.new("BillboardGui")
-	signGui.Size = UDim2.new(0, 400, 0, 80)
-	signGui.StudsOffset = Vector3.new(0, 2, 0)
+	signGui.Size = UDim2.new(0, 500, 0, 100)
+	signGui.StudsOffset = Vector3.new(0, 4, 0)
 	signGui.Adornee = archTop
 	signGui.AlwaysOnTop = false
 	signGui.Parent = archTop
@@ -599,11 +601,11 @@ function GameManager.CreateBase(player: Player): Vector3
 	belt.Parent = workspace
 	table.insert(parts, belt)
 
-	-- Treadmill label
+	-- Treadmill floating text
 	local treadmillGui = Instance.new("BillboardGui")
 	treadmillGui.Name = "TreadmillLabel"
-	treadmillGui.Size = UDim2.new(0, 250, 0, 60)
-	treadmillGui.StudsOffset = Vector3.new(0, 4, 0)
+	treadmillGui.Size = UDim2.new(0, 350, 0, 80)
+	treadmillGui.StudsOffset = Vector3.new(0, 6, 0)
 	treadmillGui.Adornee = treadmillBase
 	treadmillGui.AlwaysOnTop = false
 	treadmillGui.Parent = treadmillBase
@@ -611,46 +613,37 @@ function GameManager.CreateBase(player: Player): Vector3
 	local treadmillLabel = Instance.new("TextLabel")
 	treadmillLabel.Size = UDim2.new(1, 0, 1, 0)
 	treadmillLabel.BackgroundTransparency = 1
-	treadmillLabel.Text = "TREADMILL\n(Click in Inventory)"
-	treadmillLabel.TextColor3 = Color3.new(1, 1, 1)
+	treadmillLabel.Text = "TREADMILL"
+	treadmillLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
 	treadmillLabel.TextScaled = true
 	treadmillLabel.Font = Enum.Font.GothamBlack
 	treadmillLabel.TextStrokeTransparency = 0
 	treadmillLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	treadmillLabel.Parent = treadmillGui
 
-	-- "GYM" sign with modern backing panel
-	local gymSignBacking = Instance.new("Part")
-	gymSignBacking.Name = "GymSignBack_" .. userId
-	gymSignBacking.Size = Vector3.new(22, 5, 1)
-	gymSignBacking.Position = treadmillAreaPos + Vector3.new(0, 10, -18)
-	gymSignBacking.Anchored = true
-	gymSignBacking.Color = Color3.fromRGB(30, 30, 40)
-	gymSignBacking.Material = Enum.Material.SmoothPlastic
-	gymSignBacking.Parent = workspace
-	table.insert(parts, gymSignBacking)
-
-	local gymSign = Instance.new("Part")
-	gymSign.Name = "GymSign_" .. userId
-	gymSign.Size = Vector3.new(20, 3.5, 0.5)
-	gymSign.Position = treadmillAreaPos + Vector3.new(0, 10, -17.5)
-	gymSign.Anchored = true
-	gymSign.Color = Color3.fromRGB(0, 150, 255)
-	gymSign.Material = Enum.Material.Neon
-	gymSign.Parent = workspace
-	table.insert(parts, gymSign)
+	-- "GYM" floating text
+	local gymAnchor = Instance.new("Part")
+	gymAnchor.Name = "GymAnchor_" .. userId
+	gymAnchor.Size = Vector3.new(1, 1, 1)
+	gymAnchor.Position = treadmillAreaPos + Vector3.new(0, 10, -18)
+	gymAnchor.Anchored = true
+	gymAnchor.Transparency = 1
+	gymAnchor.CanCollide = false
+	gymAnchor.Parent = workspace
+	table.insert(parts, gymAnchor)
 
 	local gymSignGui = Instance.new("BillboardGui")
-	gymSignGui.Size = UDim2.new(0, 200, 0, 50)
-	gymSignGui.Adornee = gymSign
+	gymSignGui.Size = UDim2.new(0, 300, 0, 80)
+	gymSignGui.StudsOffset = Vector3.new(0, 3, 0)
+	gymSignGui.Adornee = gymAnchor
 	gymSignGui.AlwaysOnTop = false
-	gymSignGui.Parent = gymSign
+	gymSignGui.Parent = gymAnchor
 
 	local gymSignLabel = Instance.new("TextLabel")
 	gymSignLabel.Size = UDim2.new(1, 0, 1, 0)
 	gymSignLabel.BackgroundTransparency = 1
 	gymSignLabel.Text = "GYM"
-	gymSignLabel.TextColor3 = Color3.new(1, 1, 1)
+	gymSignLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
 	gymSignLabel.TextScaled = true
 	gymSignLabel.Font = Enum.Font.GothamBlack
 	gymSignLabel.TextStrokeTransparency = 0
@@ -702,38 +695,29 @@ function GameManager.CreateBase(player: Player): Vector3
 		table.insert(parts, dpBorder)
 	end
 
-	-- "MY BRAINROTS" sign with backing panel
-	local brSignBacking = Instance.new("Part")
-	brSignBacking.Name = "BrainrotSignBack_" .. userId
-	brSignBacking.Size = Vector3.new(26, 5, 1)
-	brSignBacking.Position = displayAreaPos + Vector3.new(0, 10, -23)
-	brSignBacking.Anchored = true
-	brSignBacking.Color = Color3.fromRGB(30, 30, 40)
-	brSignBacking.Material = Enum.Material.SmoothPlastic
-	brSignBacking.Parent = workspace
-	table.insert(parts, brSignBacking)
-
-	local brSign = Instance.new("Part")
-	brSign.Name = "BrainrotSign_" .. userId
-	brSign.Size = Vector3.new(24, 3.5, 0.5)
-	brSign.Position = displayAreaPos + Vector3.new(0, 10, -22.5)
-	brSign.Anchored = true
-	brSign.Color = Color3.fromRGB(180, 50, 255)
-	brSign.Material = Enum.Material.Neon
-	brSign.Parent = workspace
-	table.insert(parts, brSign)
+	-- "MY BRAINROTS" floating text
+	local brAnchor = Instance.new("Part")
+	brAnchor.Name = "BrainrotAnchor_" .. userId
+	brAnchor.Size = Vector3.new(1, 1, 1)
+	brAnchor.Position = displayAreaPos + Vector3.new(0, 10, -23)
+	brAnchor.Anchored = true
+	brAnchor.Transparency = 1
+	brAnchor.CanCollide = false
+	brAnchor.Parent = workspace
+	table.insert(parts, brAnchor)
 
 	local brSignGui = Instance.new("BillboardGui")
-	brSignGui.Size = UDim2.new(0, 300, 0, 60)
-	brSignGui.Adornee = brSign
+	brSignGui.Size = UDim2.new(0, 400, 0, 80)
+	brSignGui.StudsOffset = Vector3.new(0, 3, 0)
+	brSignGui.Adornee = brAnchor
 	brSignGui.AlwaysOnTop = false
-	brSignGui.Parent = brSign
+	brSignGui.Parent = brAnchor
 
 	local brSignLabel = Instance.new("TextLabel")
 	brSignLabel.Size = UDim2.new(1, 0, 1, 0)
 	brSignLabel.BackgroundTransparency = 1
 	brSignLabel.Text = player.Name .. "'s BRAINROTS"
-	brSignLabel.TextColor3 = Color3.new(1, 1, 1)
+	brSignLabel.TextColor3 = Color3.fromRGB(200, 100, 255)
 	brSignLabel.TextScaled = true
 	brSignLabel.Font = Enum.Font.GothamBlack
 	brSignLabel.TextStrokeTransparency = 0
@@ -852,39 +836,30 @@ function GameManager.CreateBase(player: Player): Vector3
 	end
 
 	-- ============================
-	-- PLAYER NAME SIGN (modern floating sign at center-back)
+	-- PLAYER NAME floating text (center-back)
 	-- ============================
-	local nameSignBacking = Instance.new("Part")
-	nameSignBacking.Name = "NameSignBack_" .. userId
-	nameSignBacking.Size = Vector3.new(35, 8, 2)
-	nameSignBacking.Position = basePosition + Vector3.new(0, 12, -bsZ/2 + 5)
-	nameSignBacking.Anchored = true
-	nameSignBacking.Color = Color3.fromRGB(30, 30, 40)
-	nameSignBacking.Material = Enum.Material.SmoothPlastic
-	nameSignBacking.Parent = workspace
-	table.insert(parts, nameSignBacking)
-
-	local nameSign = Instance.new("Part")
-	nameSign.Name = "NameSign_" .. userId
-	nameSign.Size = Vector3.new(33, 6, 1)
-	nameSign.Position = basePosition + Vector3.new(0, 12, -bsZ/2 + 5.5)
-	nameSign.Anchored = true
-	nameSign.Color = Color3.fromRGB(255, 200, 50)
-	nameSign.Material = Enum.Material.Neon
-	nameSign.Parent = workspace
-	table.insert(parts, nameSign)
+	local nameAnchor = Instance.new("Part")
+	nameAnchor.Name = "NameAnchor_" .. userId
+	nameAnchor.Size = Vector3.new(1, 1, 1)
+	nameAnchor.Position = basePosition + Vector3.new(0, 14, -bsZ/2 + 5)
+	nameAnchor.Anchored = true
+	nameAnchor.Transparency = 1
+	nameAnchor.CanCollide = false
+	nameAnchor.Parent = workspace
+	table.insert(parts, nameAnchor)
 
 	local nameGui = Instance.new("BillboardGui")
-	nameGui.Size = UDim2.new(0, 400, 0, 80)
-	nameGui.Adornee = nameSign
+	nameGui.Size = UDim2.new(0, 500, 0, 100)
+	nameGui.StudsOffset = Vector3.new(0, 4, 0)
+	nameGui.Adornee = nameAnchor
 	nameGui.AlwaysOnTop = false
-	nameGui.Parent = nameSign
+	nameGui.Parent = nameAnchor
 
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Size = UDim2.new(1, 0, 1, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = player.Name .. "'s Base"
-	nameLabel.TextColor3 = Color3.new(1, 1, 1)
+	nameLabel.TextColor3 = Color3.fromRGB(255, 220, 50)
 	nameLabel.TextScaled = true
 	nameLabel.Font = Enum.Font.GothamBlack
 	nameLabel.TextStrokeTransparency = 0
@@ -1513,6 +1488,38 @@ placeEvent.OnServerEvent:Connect(function(player)
 	local updateEvent = remotesFolder:FindFirstChild("PlayerDataUpdate")
 	if updateEvent then
 		updateEvent:FireClient(player, DataManager.GetData(player))
+	end
+end)
+
+-- Handle PlaceSingleBrainrot from client
+local placeSingleEvent = remotesFolder:WaitForChild("PlaceSingleBrainrot")
+placeSingleEvent.OnServerEvent:Connect(function(player, brainrotName)
+	if type(brainrotName) ~= "string" then return end
+	local DataManager = _G.DataManager
+	if not DataManager then return end
+
+	if DataManager.PlaceSingleBrainrot(player, brainrotName) then
+		GameManager.UpdateBrainrotDisplay(player)
+		local updateEvent = remotesFolder:FindFirstChild("PlayerDataUpdate")
+		if updateEvent then
+			updateEvent:FireClient(player, DataManager.GetData(player))
+		end
+	end
+end)
+
+-- Handle ReturnBrainrot from client
+local returnEvent = remotesFolder:WaitForChild("ReturnBrainrot")
+returnEvent.OnServerEvent:Connect(function(player, brainrotName)
+	if type(brainrotName) ~= "string" then return end
+	local DataManager = _G.DataManager
+	if not DataManager then return end
+
+	if DataManager.ReturnBrainrot(player, brainrotName) then
+		GameManager.UpdateBrainrotDisplay(player)
+		local updateEvent = remotesFolder:FindFirstChild("PlayerDataUpdate")
+		if updateEvent then
+			updateEvent:FireClient(player, DataManager.GetData(player))
+		end
 	end
 end)
 

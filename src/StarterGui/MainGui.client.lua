@@ -56,67 +56,40 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
 ------------------------------------------------------------
--- 1. MAIN HUD (top-left corner, vertical stat cards)
+-- 1. MAIN HUD (top-left, bold floating stat labels)
 ------------------------------------------------------------
 local hudFrame = Instance.new("Frame")
 hudFrame.Name = "HUD"
-hudFrame.Size = UDim2.new(0, 210, 0, 195)
+hudFrame.Size = UDim2.new(0, 280, 0, 180)
 hudFrame.Position = UDim2.new(0, 12, 0, 12)
-hudFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-hudFrame.BackgroundTransparency = 0.2
+hudFrame.BackgroundTransparency = 1
 hudFrame.Parent = screenGui
-createCorner(hudFrame, 14)
-createStroke(hudFrame, Color3.fromRGB(50, 50, 80), 2)
-
-local hudPadding = Instance.new("UIPadding")
-hudPadding.PaddingTop = UDim.new(0, 8)
-hudPadding.PaddingBottom = UDim.new(0, 8)
-hudPadding.PaddingLeft = UDim.new(0, 10)
-hudPadding.PaddingRight = UDim.new(0, 10)
-hudPadding.Parent = hudFrame
 
 local hudLayout = Instance.new("UIListLayout")
 hudLayout.FillDirection = Enum.FillDirection.Vertical
-hudLayout.Padding = UDim.new(0, 6)
+hudLayout.Padding = UDim.new(0, 2)
 hudLayout.Parent = hudFrame
 
-local function createHudStat(name, icon, color)
-	local container = Instance.new("Frame")
-	container.Name = name
-	container.Size = UDim2.new(1, 0, 0, 38)
-	container.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-	container.BackgroundTransparency = 0.3
-	container.Parent = hudFrame
-	createCorner(container, 10)
-
-	local iconLabel = Instance.new("TextLabel")
-	iconLabel.Size = UDim2.new(0, 30, 1, 0)
-	iconLabel.Position = UDim2.new(0, 6, 0, 0)
-	iconLabel.BackgroundTransparency = 1
-	iconLabel.Text = icon
-	iconLabel.TextScaled = true
-	iconLabel.Font = Enum.Font.GothamBold
-	iconLabel.TextColor3 = color
-	iconLabel.Parent = container
-
+local function createHudStat(name, prefix, color)
 	local valueLabel = Instance.new("TextLabel")
-	valueLabel.Name = "Value"
-	valueLabel.Size = UDim2.new(1, -42, 1, 0)
-	valueLabel.Position = UDim2.new(0, 38, 0, 0)
+	valueLabel.Name = name
+	valueLabel.Size = UDim2.new(1, 0, 0, 42)
 	valueLabel.BackgroundTransparency = 1
-	valueLabel.Text = "0"
+	valueLabel.Text = prefix .. "0"
+	valueLabel.TextColor3 = color
 	valueLabel.TextScaled = true
-	valueLabel.Font = Enum.Font.GothamBold
-	valueLabel.TextColor3 = Color3.new(1, 1, 1)
+	valueLabel.Font = Enum.Font.GothamBlack
 	valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-	valueLabel.Parent = container
+	valueLabel.TextStrokeTransparency = 0
+	valueLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+	valueLabel.Parent = hudFrame
 
 	return valueLabel
 end
 
-local coinsLabel = createHudStat("Coins", "$", Color3.fromRGB(255, 215, 0))
-local speedLabel = createHudStat("Speed", ">", Color3.fromRGB(0, 200, 255))
-local abyssLabel = createHudStat("Abyss", "#", Color3.fromRGB(255, 100, 100))
+local coinsLabel = createHudStat("Coins", "$", Color3.fromRGB(80, 255, 80))
+local speedLabel = createHudStat("Speed", "Speed: ", Color3.fromRGB(255, 220, 0))
+local abyssLabel = createHudStat("Abyss", "Abyss #", Color3.fromRGB(255, 100, 100))
 local incomeLabel = createHudStat("Income", "+", Color3.fromRGB(100, 255, 100))
 
 ------------------------------------------------------------
@@ -602,10 +575,10 @@ local function updateGui(data)
 	if not data then return end
 
 	-- HUD
-	coinsLabel.Text = formatNum(data.coins)
-	speedLabel.Text = formatNum(data.speed)
-	abyssLabel.Text = tostring(data.currentAbyss)
-	incomeLabel.Text = formatNum(ClientState.GetIncomePerSecond()) .. "/s"
+	coinsLabel.Text = "$" .. formatNum(data.coins)
+	speedLabel.Text = "Speed: " .. formatNum(data.speed)
+	abyssLabel.Text = "Abyss #" .. tostring(data.currentAbyss)
+	incomeLabel.Text = "+" .. formatNum(ClientState.GetIncomePerSecond()) .. "/s"
 
 	-- Treadmill info
 	local treadmill = TreadmillData.GetByName(data.currentTreadmill)
@@ -691,7 +664,7 @@ local function updateGui(data)
 	for _, entry in ipairs(sortedBrainrots) do
 		local total = entry.placed + entry.collected
 		local itemFrame = Instance.new("Frame")
-		itemFrame.Size = UDim2.new(1, -10, 0, 38)
+		itemFrame.Size = UDim2.new(1, -10, 0, 60)
 		itemFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
 		itemFrame.Parent = brainrotScroll
 		createCorner(itemFrame, 6)
@@ -699,15 +672,15 @@ local function updateGui(data)
 		-- Rarity dot
 		local rarityDot = Instance.new("Frame")
 		rarityDot.Size = UDim2.new(0, 8, 0, 8)
-		rarityDot.Position = UDim2.new(0, 6, 0.5, -4)
+		rarityDot.Position = UDim2.new(0, 6, 0, 8)
 		rarityDot.BackgroundColor3 = GameConfig.RARITY_COLORS[entry.info.rarity] or Color3.new(1,1,1)
 		rarityDot.Parent = itemFrame
 		createCorner(rarityDot, 4)
 
 		-- Name
 		local nameL = Instance.new("TextLabel")
-		nameL.Size = UDim2.new(0.4, -20, 1, 0)
-		nameL.Position = UDim2.new(0, 18, 0, 0)
+		nameL.Size = UDim2.new(0.5, -20, 0, 20)
+		nameL.Position = UDim2.new(0, 18, 0, 2)
 		nameL.BackgroundTransparency = 1
 		nameL.Text = entry.name
 		nameL.TextColor3 = GameConfig.RARITY_COLORS[entry.info.rarity] or Color3.new(1,1,1)
@@ -716,47 +689,77 @@ local function updateGui(data)
 		nameL.TextXAlignment = Enum.TextXAlignment.Left
 		nameL.Parent = itemFrame
 
-		-- Count
-		local countL = Instance.new("TextLabel")
-		countL.Size = UDim2.new(0, 30, 1, 0)
-		countL.Position = UDim2.new(0.4, 0, 0, 0)
-		countL.BackgroundTransparency = 1
-		countL.Text = "x" .. total
-		countL.TextColor3 = Color3.fromRGB(180, 180, 180)
-		countL.TextScaled = true
-		countL.Font = Enum.Font.Gotham
-		countL.Parent = itemFrame
+		-- Count + Income on top row
+		local infoL = Instance.new("TextLabel")
+		infoL.Size = UDim2.new(0.45, 0, 0, 20)
+		infoL.Position = UDim2.new(0.52, 0, 0, 2)
+		infoL.BackgroundTransparency = 1
+		local incomeText = entry.placed > 0 and ("  $" .. formatNum(entry.info.income * entry.placed) .. "/s") or ""
+		infoL.Text = "x" .. total .. incomeText
+		infoL.TextColor3 = entry.placed > 0 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(180, 180, 180)
+		infoL.TextScaled = true
+		infoL.Font = Enum.Font.Gotham
+		infoL.TextXAlignment = Enum.TextXAlignment.Right
+		infoL.Parent = itemFrame
 
-		-- Status (placed vs in inventory)
+		-- Bottom row: status + action buttons
 		local statusL = Instance.new("TextLabel")
-		statusL.Size = UDim2.new(0.2, 0, 1, 0)
-		statusL.Position = UDim2.new(0.48, 0, 0, 0)
+		statusL.Size = UDim2.new(0.35, 0, 0, 16)
+		statusL.Position = UDim2.new(0, 18, 0, 24)
 		statusL.BackgroundTransparency = 1
 		statusL.Font = Enum.Font.Gotham
 		statusL.TextScaled = true
+		statusL.TextXAlignment = Enum.TextXAlignment.Left
 		statusL.Parent = itemFrame
 
 		if entry.placed > 0 and entry.collected > 0 then
+			statusL.Text = entry.placed .. " placed, " .. entry.collected .. " in bag"
+			statusL.TextColor3 = Color3.fromRGB(180, 200, 255)
+		elseif entry.placed > 0 then
 			statusL.Text = entry.placed .. " on stage"
 			statusL.TextColor3 = Color3.fromRGB(100, 255, 100)
-		elseif entry.placed > 0 then
-			statusL.Text = "On Stage"
-			statusL.TextColor3 = Color3.fromRGB(100, 255, 100)
 		else
-			statusL.Text = "Inventory"
+			statusL.Text = entry.collected .. " in bag"
 			statusL.TextColor3 = Color3.fromRGB(255, 200, 50)
 		end
 
-		-- Income
-		local incomeL = Instance.new("TextLabel")
-		incomeL.Size = UDim2.new(0.22, 0, 1, 0)
-		incomeL.Position = UDim2.new(0.78, 0, 0, 0)
-		incomeL.BackgroundTransparency = 1
-		incomeL.Text = entry.placed > 0 and (formatNum(entry.info.income * entry.placed) .. "/s") or "--"
-		incomeL.TextColor3 = entry.placed > 0 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(100, 100, 100)
-		incomeL.TextScaled = true
-		incomeL.Font = Enum.Font.Gotham
-		incomeL.Parent = itemFrame
+		-- Place button (if has collected/inventory brainrots)
+		if entry.collected > 0 then
+			local placeBtn = Instance.new("TextButton")
+			placeBtn.Size = UDim2.new(0, 70, 0, 24)
+			placeBtn.Position = UDim2.new(1, -150, 0, 30)
+			placeBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+			placeBtn.Text = "PLACE"
+			placeBtn.TextColor3 = Color3.new(1, 1, 1)
+			placeBtn.TextScaled = true
+			placeBtn.Font = Enum.Font.GothamBold
+			placeBtn.Parent = itemFrame
+			createCorner(placeBtn, 6)
+
+			local brName = entry.name
+			placeBtn.MouseButton1Click:Connect(function()
+				ClientState.PlaceSingleBrainrot(brName)
+			end)
+		end
+
+		-- Return button (if has placed brainrots)
+		if entry.placed > 0 then
+			local returnBtn = Instance.new("TextButton")
+			returnBtn.Size = UDim2.new(0, 70, 0, 24)
+			returnBtn.Position = UDim2.new(1, -75, 0, 30)
+			returnBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 30)
+			returnBtn.Text = "RETURN"
+			returnBtn.TextColor3 = Color3.new(1, 1, 1)
+			returnBtn.TextScaled = true
+			returnBtn.Font = Enum.Font.GothamBold
+			returnBtn.Parent = itemFrame
+			createCorner(returnBtn, 6)
+
+			local brName = entry.name
+			returnBtn.MouseButton1Click:Connect(function()
+				ClientState.ReturnBrainrot(brName)
+			end)
+		end
 	end
 
 	brainrotScroll.CanvasSize = UDim2.new(0, 0, 0, brainrotListLayout.AbsoluteContentSize.Y + 10)

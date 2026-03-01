@@ -213,42 +213,156 @@ function GameManager.CreateBase(player: Player): Vector3
 	end
 
 	-- ============================
-	-- PERIMETER WALLS (tall solid boundary walls)
+	-- PERIMETER WALLS (brown terraced terrain walls with trees)
 	-- ============================
 	local wallHeight = 45
-	local wallThickness = 4
+	local wallThickness = 8
 
-	-- Left, Right, Back walls around the base
-	for _, wallInfo in ipairs({
-		{name = "WallLeft", size = Vector3.new(wallThickness, wallHeight, bsZ), offset = Vector3.new(-bsX/2, wallHeight/2, 0)},
-		{name = "WallRight", size = Vector3.new(wallThickness, wallHeight, bsZ), offset = Vector3.new(bsX/2, wallHeight/2, 0)},
-		{name = "WallBack", size = Vector3.new(bsX + wallThickness * 2, wallHeight, wallThickness), offset = Vector3.new(0, wallHeight/2, -bsZ/2)},
-	}) do
-		local wall = Instance.new("Part")
-		wall.Name = wallInfo.name .. "_" .. userId
-		wall.Size = wallInfo.size
-		wall.Position = basePosition + wallInfo.offset
-		wall.Anchored = true
-		wall.Color = Color3.fromRGB(90, 85, 80)
-		wall.Material = Enum.Material.Concrete
-		wall.Parent = workspace
-		table.insert(parts, wall)
+	-- Terrace layer definitions: {heightFrom, heightTo, color, thickness, material}
+	local terraceColors = {
+		Color3.fromRGB(100, 70, 40),   -- dark brown (bottom)
+		Color3.fromRGB(130, 95, 55),   -- medium brown
+		Color3.fromRGB(155, 120, 75),  -- tan
+		Color3.fromRGB(170, 140, 95),  -- light tan (top)
+	}
+	local grassColor = Color3.fromRGB(55, 140, 40)
+	local wallTreeColors = {
+		Color3.fromRGB(40, 150, 45),
+		Color3.fromRGB(50, 170, 55),
+		Color3.fromRGB(35, 130, 40),
+	}
 
-		-- Neon strip on top of wall
-		local strip = Instance.new("Part")
-		strip.Name = wallInfo.name .. "Strip_" .. userId
-		strip.Size = Vector3.new(wallInfo.size.X, 0.5, wallInfo.size.Z)
-		strip.Position = basePosition + wallInfo.offset + Vector3.new(0, wallHeight/2 + 0.25, 0)
-		strip.Anchored = true
-		strip.CanCollide = false
-		strip.Color = Color3.fromRGB(0, 180, 255)
-		strip.Material = Enum.Material.Neon
-		strip.Parent = workspace
-		table.insert(parts, strip)
+	-- Helper: build a terraced wall section at a position
+	local function buildTerracedWall(wallName, wallSize, wallPos, lengthAxis)
+		-- lengthAxis: "X" or "Z" - which axis the wall extends along
+		local layerCount = 4
+		local layerHeight = wallHeight / layerCount
+
+		for layer = 1, layerCount do
+			local yBottom = (layer - 1) * layerHeight
+			local yCenter = yBottom + layerHeight / 2
+			-- Each layer gets slightly thinner (recessed)
+			local recess = (layer - 1) * 1.5
+			local layerSize
+			if lengthAxis == "X" then
+				layerSize = Vector3.new(wallSize.X, layerHeight, wallThickness - recess)
+			else
+				layerSize = Vector3.new(wallThickness - recess, layerHeight, wallSize.Z)
+			end
+
+			local layerPart = Instance.new("Part")
+			layerPart.Name = wallName .. "_Layer" .. layer .. "_" .. userId
+			layerPart.Size = layerSize
+			layerPart.Position = wallPos + Vector3.new(0, yCenter, 0)
+			layerPart.Anchored = true
+			layerPart.Color = terraceColors[layer]
+			layerPart.Material = Enum.Material.Slate
+			layerPart.Parent = workspace
+			table.insert(parts, layerPart)
+
+			-- Grass strip on each ledge (except bottom)
+			if layer > 1 then
+				local grassSize
+				if lengthAxis == "X" then
+					grassSize = Vector3.new(wallSize.X, 0.4, 2)
+				else
+					grassSize = Vector3.new(2, 0.4, wallSize.Z)
+				end
+				local grassStrip = Instance.new("Part")
+				grassStrip.Name = wallName .. "_Grass" .. layer .. "_" .. userId
+				grassStrip.Size = grassSize
+				grassStrip.Position = wallPos + Vector3.new(0, yBottom + 0.2, 0)
+				grassStrip.Anchored = true
+				grassStrip.CanCollide = false
+				grassStrip.Color = grassColor
+				grassStrip.Material = Enum.Material.Grass
+				grassStrip.Parent = workspace
+				table.insert(parts, grassStrip)
+			end
+		end
+
+		-- Top grass strip
+		local topGrassSize
+		if lengthAxis == "X" then
+			topGrassSize = Vector3.new(wallSize.X, 0.5, wallThickness + 2)
+		else
+			topGrassSize = Vector3.new(wallThickness + 2, 0.5, wallSize.Z)
+		end
+		local topGrass = Instance.new("Part")
+		topGrass.Name = wallName .. "_TopGrass_" .. userId
+		topGrass.Size = topGrassSize
+		topGrass.Position = wallPos + Vector3.new(0, wallHeight + 0.25, 0)
+		topGrass.Anchored = true
+		topGrass.CanCollide = false
+		topGrass.Color = grassColor
+		topGrass.Material = Enum.Material.Grass
+		topGrass.Parent = workspace
+		table.insert(parts, topGrass)
+
+		-- Trees along the top of the wall
+		local wallLength = (lengthAxis == "X") and wallSize.X or wallSize.Z
+		local treeCount = math.floor(wallLength / 25)
+		for t = 1, treeCount do
+			local tFrac = (t - 0.5) / treeCount
+			local treeOffset
+			if lengthAxis == "X" then
+				treeOffset = Vector3.new(-wallSize.X / 2 + tFrac * wallSize.X, wallHeight, 0)
+			else
+				treeOffset = Vector3.new(0, wallHeight, -wallSize.Z / 2 + tFrac * wallSize.Z)
+			end
+			-- Vary tree position slightly
+			local jitter = math.sin(t * 7.3) * 2
+
+			local trunk = Instance.new("Part")
+			trunk.Name = wallName .. "_TreeTrunk_" .. userId .. "_" .. t
+			trunk.Size = Vector3.new(2, 8, 2)
+			trunk.Position = wallPos + treeOffset + Vector3.new(
+				(lengthAxis == "Z") and jitter or 0,
+				4.5,
+				(lengthAxis == "X") and jitter or 0
+			)
+			trunk.Anchored = true
+			trunk.Color = Color3.fromRGB(80, 55, 25)
+			trunk.Material = Enum.Material.Wood
+			trunk.Shape = Enum.PartType.Cylinder
+			trunk.Orientation = Vector3.new(0, 0, 90)
+			trunk.Parent = workspace
+			table.insert(parts, trunk)
+
+			local leaves = Instance.new("Part")
+			leaves.Name = wallName .. "_TreeLeaves_" .. userId .. "_" .. t
+			local leafScale = 0.8 + math.abs(math.sin(t * 3.7)) * 0.6
+			leaves.Size = Vector3.new(8 * leafScale, 7 * leafScale, 8 * leafScale)
+			leaves.Position = trunk.Position + Vector3.new(0, 6 * leafScale, 0)
+			leaves.Anchored = true
+			leaves.Color = wallTreeColors[(t % #wallTreeColors) + 1]
+			leaves.Material = Enum.Material.Grass
+			leaves.Shape = Enum.PartType.Ball
+			leaves.Parent = workspace
+			table.insert(parts, leaves)
+		end
 	end
 
-	-- Front transition walls (close the gap between base width and abyss corridor)
-	-- Base is 200 wide, abyss corridor is PLATFORM_LENGTH (100) wide
+	-- Left wall
+	buildTerracedWall("WallLeft",
+		Vector3.new(wallThickness, wallHeight, bsZ),
+		basePosition + Vector3.new(-bsX/2, 0, 0),
+		"Z"
+	)
+	-- Right wall
+	buildTerracedWall("WallRight",
+		Vector3.new(wallThickness, wallHeight, bsZ),
+		basePosition + Vector3.new(bsX/2, 0, 0),
+		"Z"
+	)
+	-- Back wall
+	buildTerracedWall("WallBack",
+		Vector3.new(bsX + wallThickness * 2, wallHeight, wallThickness),
+		basePosition + Vector3.new(0, 0, -bsZ/2),
+		"X"
+	)
+
+	-- Front transition walls (close gap between base 200-wide and abyss corridor 100-wide)
 	local corridorHalfWidth = GameConfig.PLATFORM_LENGTH / 2 -- 50
 	local frontWallWidth = (bsX / 2) - corridorHalfWidth -- 50 studs each side
 	if frontWallWidth > 0 then
@@ -256,65 +370,12 @@ function GameManager.CreateBase(player: Player): Vector3
 			{name = "FrontWallLeft", xOffset = -(corridorHalfWidth + frontWallWidth / 2)},
 			{name = "FrontWallRight", xOffset = (corridorHalfWidth + frontWallWidth / 2)},
 		}) do
-			local frontWall = Instance.new("Part")
-			frontWall.Name = fwInfo.name .. "_" .. userId
-			frontWall.Size = Vector3.new(frontWallWidth, wallHeight, wallThickness)
-			frontWall.Position = basePosition + Vector3.new(fwInfo.xOffset, wallHeight / 2, bsZ / 2)
-			frontWall.Anchored = true
-			frontWall.Color = Color3.fromRGB(90, 85, 80)
-			frontWall.Material = Enum.Material.Concrete
-			frontWall.Parent = workspace
-			table.insert(parts, frontWall)
-
-			local fwStrip = Instance.new("Part")
-			fwStrip.Name = fwInfo.name .. "Strip_" .. userId
-			fwStrip.Size = Vector3.new(frontWallWidth, 0.5, wallThickness)
-			fwStrip.Position = basePosition + Vector3.new(fwInfo.xOffset, wallHeight + 0.25, bsZ / 2)
-			fwStrip.Anchored = true
-			fwStrip.CanCollide = false
-			fwStrip.Color = Color3.fromRGB(0, 180, 255)
-			fwStrip.Material = Enum.Material.Neon
-			fwStrip.Parent = workspace
-			table.insert(parts, fwStrip)
+			buildTerracedWall(fwInfo.name,
+				Vector3.new(frontWallWidth, wallHeight, wallThickness),
+				basePosition + Vector3.new(fwInfo.xOffset, 0, bsZ / 2),
+				"X"
+			)
 		end
-	end
-
-	-- ============================
-	-- CORNER PILLARS (tall glowing pillars matching wall height)
-	-- ============================
-	local pillarPositions = {
-		Vector3.new(-bsX/2, 0, -bsZ/2),
-		Vector3.new(bsX/2, 0, -bsZ/2),
-		Vector3.new(-bsX/2, 0, bsZ/2),
-		Vector3.new(bsX/2, 0, bsZ/2),
-	}
-	for i, offset in ipairs(pillarPositions) do
-		local pillar = Instance.new("Part")
-		pillar.Name = "Pillar_" .. userId .. "_" .. i
-		pillar.Size = Vector3.new(5, wallHeight + 2, 5)
-		pillar.Position = basePosition + offset + Vector3.new(0, (wallHeight + 2) / 2, 0)
-		pillar.Anchored = true
-		pillar.Color = Color3.fromRGB(110, 105, 100)
-		pillar.Material = Enum.Material.Concrete
-		pillar.Parent = workspace
-		table.insert(parts, pillar)
-
-		-- Glowing top cap
-		local cap = Instance.new("Part")
-		cap.Name = "PillarCap_" .. userId .. "_" .. i
-		cap.Size = Vector3.new(6, 1.5, 6)
-		cap.Position = basePosition + offset + Vector3.new(0, wallHeight + 3.75, 0)
-		cap.Anchored = true
-		cap.Color = Color3.fromRGB(0, 180, 255)
-		cap.Material = Enum.Material.Neon
-		cap.Parent = workspace
-		table.insert(parts, cap)
-
-		local pillarLight = Instance.new("PointLight")
-		pillarLight.Color = Color3.fromRGB(0, 180, 255)
-		pillarLight.Range = 30
-		pillarLight.Brightness = 0.6
-		pillarLight.Parent = cap
 	end
 
 	-- ============================
@@ -985,6 +1046,7 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 
 	-- Folder for real brainrot models
 	local brainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotModels")
+		or ReplicatedStorage:WaitForChild("BrainrotModels", 5)
 
 	-- Grid layout: 5 columns, 11-stud spacing for roomy individual pedestals
 	local columns = 5

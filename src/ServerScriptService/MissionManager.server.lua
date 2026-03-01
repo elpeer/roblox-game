@@ -532,26 +532,6 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 	edgeStrip.Parent = workspace
 	table.insert(parts, edgeStrip)
 
-	-- Stage sign
-	local stageSign = Instance.new("BillboardGui")
-	stageSign.Name = "StageSign"
-	stageSign.Size = UDim2.new(0, 250, 0, 100)
-	stageSign.StudsOffset = Vector3.new(0, 8, 0)
-	stageSign.Adornee = startPlatform
-	stageSign.AlwaysOnTop = true
-	stageSign.Parent = startPlatform
-
-	local stageLabel = Instance.new("TextLabel")
-	stageLabel.Size = UDim2.new(1, 0, 1, 0)
-	stageLabel.BackgroundTransparency = 1
-	stageLabel.Text = "Abyss #" .. abyssNum .. "\n[" .. tierName .. "]\nJump: " .. abyssWidth
-	stageLabel.TextColor3 = tierColor
-	stageLabel.TextScaled = true
-	stageLabel.Font = Enum.Font.GothamBlack
-	stageLabel.TextStrokeTransparency = 0
-	stageLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-	stageLabel.Parent = stageSign
-
 	-- Landing platform
 	local landingZ = startZ + GameConfig.PLATFORM_WIDTH + abyssWidth
 	local landingPlatform = Instance.new("Part")

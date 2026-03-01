@@ -452,7 +452,7 @@ function GameManager.CreateBase(player: Player): Vector3
 	signLabel.Text = "ABYSS COURSE"
 	signLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
 	signLabel.TextScaled = true
-	signLabel.Font = Enum.Font.FredokaOne
+	signLabel.Font = Enum.Font.GothamBlack
 	signLabel.TextStrokeTransparency = 0
 	signLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	signLabel.Parent = signGui
@@ -614,7 +614,7 @@ function GameManager.CreateBase(player: Player): Vector3
 	treadmillLabel.Text = "TREADMILL\n(Click in Inventory)"
 	treadmillLabel.TextColor3 = Color3.new(1, 1, 1)
 	treadmillLabel.TextScaled = true
-	treadmillLabel.Font = Enum.Font.FredokaOne
+	treadmillLabel.Font = Enum.Font.GothamBlack
 	treadmillLabel.TextStrokeTransparency = 0
 	treadmillLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	treadmillLabel.Parent = treadmillGui
@@ -652,7 +652,7 @@ function GameManager.CreateBase(player: Player): Vector3
 	gymSignLabel.Text = "GYM"
 	gymSignLabel.TextColor3 = Color3.new(1, 1, 1)
 	gymSignLabel.TextScaled = true
-	gymSignLabel.Font = Enum.Font.FredokaOne
+	gymSignLabel.Font = Enum.Font.GothamBlack
 	gymSignLabel.TextStrokeTransparency = 0
 	gymSignLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	gymSignLabel.Parent = gymSignGui
@@ -735,7 +735,7 @@ function GameManager.CreateBase(player: Player): Vector3
 	brSignLabel.Text = player.Name .. "'s BRAINROTS"
 	brSignLabel.TextColor3 = Color3.new(1, 1, 1)
 	brSignLabel.TextScaled = true
-	brSignLabel.Font = Enum.Font.FredokaOne
+	brSignLabel.Font = Enum.Font.GothamBlack
 	brSignLabel.TextStrokeTransparency = 0
 	brSignLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	brSignLabel.Parent = brSignGui
@@ -886,7 +886,7 @@ function GameManager.CreateBase(player: Player): Vector3
 	nameLabel.Text = player.Name .. "'s Base"
 	nameLabel.TextColor3 = Color3.new(1, 1, 1)
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.Font = Enum.Font.GothamBlack
 	nameLabel.TextStrokeTransparency = 0
 	nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	nameLabel.Parent = nameGui
@@ -1201,7 +1201,7 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 			incomeLabel.Text = "$" .. formatNumber(incomePerSec) .. "/s"
 			incomeLabel.TextColor3 = Color3.new(1, 1, 1)
 			incomeLabel.TextScaled = true
-			incomeLabel.Font = Enum.Font.FredokaOne
+			incomeLabel.Font = Enum.Font.GothamBlack
 			incomeLabel.TextStrokeTransparency = 0
 			incomeLabel.TextStrokeColor3 = Color3.fromRGB(0, 80, 0)
 			incomeLabel.Parent = incomeGui
@@ -1361,7 +1361,7 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 				nameLabel.Text = brainrotName
 				nameLabel.TextColor3 = rarityColor
 				nameLabel.TextScaled = true
-				nameLabel.Font = Enum.Font.FredokaOne
+				nameLabel.Font = Enum.Font.GothamBlack
 				nameLabel.TextStrokeTransparency = 0
 				nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 				nameLabel.Parent = nameGui
@@ -1373,7 +1373,7 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 				countLabel.Text = "x" .. count
 				countLabel.TextColor3 = Color3.new(1, 1, 1)
 				countLabel.TextScaled = true
-				countLabel.Font = Enum.Font.FredokaOne
+				countLabel.Font = Enum.Font.GothamBlack
 				countLabel.TextStrokeTransparency = 0
 				countLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 				countLabel.Parent = nameGui

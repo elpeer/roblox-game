@@ -640,7 +640,6 @@ function GameManager.CreateBase(player: Player): Vector3
 	nameSignBacking.Material = Enum.Material.SmoothPlastic
 	nameSignBacking.Parent = workspace
 	table.insert(parts, nameSignBacking)
-	createCorner(nameSignBacking, 4)
 
 	local nameSign = Instance.new("Part")
 	nameSign.Name = "NameSign_" .. userId

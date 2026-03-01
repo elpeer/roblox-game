@@ -102,6 +102,17 @@ for _, child in ipairs(workspace:GetChildren()) do
 end
 
 ------------------------------------------------------------
+-- Helper: format large numbers (1500 → "1.5K", 2400000 → "2.4M")
+------------------------------------------------------------
+local function formatNumber(n)
+	if n >= 1e12 then return string.format("%.1fT", n / 1e12) end
+	if n >= 1e9 then return string.format("%.1fB", n / 1e9) end
+	if n >= 1e6 then return string.format("%.1fM", n / 1e6) end
+	if n >= 1e3 then return string.format("%.1fK", n / 1e3) end
+	return tostring(math.floor(n))
+end
+
+------------------------------------------------------------
 -- 2. Create Player Base
 ------------------------------------------------------------
 function GameManager.CreateBase(player: Player): Vector3
@@ -629,6 +640,117 @@ function GameManager.CreateBase(player: Player): Vector3
 	brSignLabel.Parent = brSignGui
 
 	-- ============================
+	-- DISPLAY AREA ROOF / CANOPY
+	-- ============================
+	local roofHeight = 18 -- height above base Y
+	local roofY = basePosition.Y + roofHeight
+
+	-- 4 roof support pillars at corners of display area
+	local roofPillarPositions = {
+		Vector3.new(-28, 0, -23),
+		Vector3.new(28, 0, -23),
+		Vector3.new(-28, 0, 23),
+		Vector3.new(28, 0, 23),
+	}
+	for i, rOffset in ipairs(roofPillarPositions) do
+		local roofPillar = Instance.new("Part")
+		roofPillar.Name = "RoofPillar_" .. userId .. "_" .. i
+		roofPillar.Size = Vector3.new(2.5, roofHeight - 2, 2.5)
+		roofPillar.Position = displayAreaPos + rOffset + Vector3.new(0, (roofHeight - 2) / 2 + 2, 0)
+		roofPillar.Anchored = true
+		roofPillar.Color = Color3.fromRGB(220, 220, 230)
+		roofPillar.Material = Enum.Material.SmoothPlastic
+		roofPillar.Parent = workspace
+		table.insert(parts, roofPillar)
+
+		-- Neon accent strip on each pillar
+		local pillarStrip = Instance.new("Part")
+		pillarStrip.Name = "RoofPillarStrip_" .. userId .. "_" .. i
+		pillarStrip.Size = Vector3.new(0.5, roofHeight - 2, 0.5)
+		pillarStrip.Position = displayAreaPos + rOffset + Vector3.new(0, (roofHeight - 2) / 2 + 2, 1.2)
+		pillarStrip.Anchored = true
+		pillarStrip.CanCollide = false
+		pillarStrip.Color = Color3.fromRGB(180, 50, 255)
+		pillarStrip.Material = Enum.Material.Neon
+		pillarStrip.Parent = workspace
+		table.insert(parts, pillarStrip)
+	end
+
+	-- Main roof slab
+	local roofSlab = Instance.new("Part")
+	roofSlab.Name = "RoofSlab_" .. userId
+	roofSlab.Size = Vector3.new(62, 1.5, 52)
+	roofSlab.Position = displayAreaPos + Vector3.new(0, roofHeight + 0.75, 0)
+	roofSlab.Anchored = true
+	roofSlab.Color = Color3.fromRGB(50, 50, 65)
+	roofSlab.Material = Enum.Material.SmoothPlastic
+	roofSlab.Transparency = 0.15
+	roofSlab.Parent = workspace
+	table.insert(parts, roofSlab)
+
+	-- Neon border around roof edge
+	local roofBorderColor = Color3.fromRGB(180, 50, 255)
+	for _, rbi in ipairs({
+		{size = Vector3.new(62, 0.4, 0.6), offset = Vector3.new(0, roofHeight + 1.6, -26)},
+		{size = Vector3.new(62, 0.4, 0.6), offset = Vector3.new(0, roofHeight + 1.6, 26)},
+		{size = Vector3.new(0.6, 0.4, 52), offset = Vector3.new(-31, roofHeight + 1.6, 0)},
+		{size = Vector3.new(0.6, 0.4, 52), offset = Vector3.new(31, roofHeight + 1.6, 0)},
+	}) do
+		local roofBorder = Instance.new("Part")
+		roofBorder.Name = "RoofBorder_" .. userId
+		roofBorder.Size = rbi.size
+		roofBorder.Position = displayAreaPos + rbi.offset
+		roofBorder.Anchored = true
+		roofBorder.CanCollide = false
+		roofBorder.Color = roofBorderColor
+		roofBorder.Material = Enum.Material.Neon
+		roofBorder.Parent = workspace
+		table.insert(parts, roofBorder)
+	end
+
+	-- Roof cross beams for visual detail
+	for _, beamInfo in ipairs({
+		{size = Vector3.new(62, 0.8, 1.5), offset = Vector3.new(0, roofHeight, 0)},
+		{size = Vector3.new(1.5, 0.8, 52), offset = Vector3.new(0, roofHeight, 0)},
+	}) do
+		local beam = Instance.new("Part")
+		beam.Name = "RoofBeam_" .. userId
+		beam.Size = beamInfo.size
+		beam.Position = displayAreaPos + beamInfo.offset
+		beam.Anchored = true
+		beam.Color = Color3.fromRGB(70, 70, 85)
+		beam.Material = Enum.Material.SmoothPlastic
+		beam.Parent = workspace
+		table.insert(parts, beam)
+	end
+
+	-- Hanging lights under roof
+	for _, lightOffset in ipairs({
+		Vector3.new(-15, roofHeight - 1.5, -10),
+		Vector3.new(15, roofHeight - 1.5, -10),
+		Vector3.new(-15, roofHeight - 1.5, 10),
+		Vector3.new(15, roofHeight - 1.5, 10),
+		Vector3.new(0, roofHeight - 1.5, 0),
+	}) do
+		local roofLight = Instance.new("Part")
+		roofLight.Name = "RoofLight_" .. userId
+		roofLight.Size = Vector3.new(3, 0.5, 3)
+		roofLight.Position = displayAreaPos + lightOffset
+		roofLight.Anchored = true
+		roofLight.CanCollide = false
+		roofLight.Color = Color3.fromRGB(255, 240, 200)
+		roofLight.Material = Enum.Material.Neon
+		roofLight.Parent = workspace
+		table.insert(parts, roofLight)
+
+		local hangLight = Instance.new("PointLight")
+		hangLight.Color = Color3.fromRGB(255, 240, 200)
+		hangLight.Range = 25
+		hangLight.Brightness = 1
+		hangLight.Parent = roofLight
+	end
+
+	-- ============================
 	-- PLAYER NAME SIGN (modern floating sign at center-back)
 	-- ============================
 	local nameSignBacking = Instance.new("Part")
@@ -825,26 +947,105 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 		end
 	end
 
-	-- Create display models for collected brainrots
+	-- Display area: right side of base
 	local displayCenter = Vector3.new(basePos.X + 55, basePos.Y + 3, basePos.Z - 20)
 	local BrainrotData = require(Modules:WaitForChild("BrainrotData"))
 
 	-- Folder for real brainrot models
 	local brainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotModels")
 
+	-- Grid layout: 5 columns, 11-stud spacing for roomy individual pedestals
+	local columns = 5
+	local colSpacing = 11
+	local rowSpacing = 11
+
 	local index = 0
 	for brainrotName, count in pairs(data.placedBrainrots or {}) do
 		local brainrotInfo = BrainrotData.GetByName(brainrotName)
 		if brainrotInfo then
-			local row = math.floor(index / 6)
-			local col = index % 6
-			local modelPos = displayCenter + Vector3.new(-20 + col * 8, 0, -18 + row * 8)
+			local row = math.floor(index / columns)
+			local col = index % columns
+			local modelPos = displayCenter + Vector3.new(
+				-((columns - 1) * colSpacing / 2) + col * colSpacing,
+				0,
+				-18 + row * rowSpacing
+			)
 			local rarityColor = GameConfig.RARITY_COLORS[brainrotInfo.rarity] or Color3.new(1, 1, 1)
 
-			-- Try to use a real model from BrainrotModels folder
+			-- ===== Individual Pedestal =====
+			-- Main pedestal base (dark raised platform)
+			local pedestal = Instance.new("Part")
+			pedestal.Name = "Pedestal"
+			pedestal.Size = Vector3.new(6, 1.5, 6)
+			pedestal.Position = modelPos + Vector3.new(0, -0.75, 0)
+			pedestal.Anchored = true
+			pedestal.Color = Color3.fromRGB(50, 50, 60)
+			pedestal.Material = Enum.Material.SmoothPlastic
+			pedestal.Parent = workspace
+
+			-- Pedestal top surface (slightly lighter)
+			local pedestalTop = Instance.new("Part")
+			pedestalTop.Name = "PedestalTop"
+			pedestalTop.Size = Vector3.new(5.5, 0.15, 5.5)
+			pedestalTop.Position = modelPos + Vector3.new(0, 0.08, 0)
+			pedestalTop.Anchored = true
+			pedestalTop.CanCollide = false
+			pedestalTop.Color = Color3.fromRGB(70, 70, 80)
+			pedestalTop.Material = Enum.Material.SmoothPlastic
+			pedestalTop.Parent = workspace
+
+			-- Neon rim around pedestal in rarity color
+			for _, rimInfo in ipairs({
+				{size = Vector3.new(6, 0.2, 0.3), offset = Vector3.new(0, 0.1, -3)},
+				{size = Vector3.new(6, 0.2, 0.3), offset = Vector3.new(0, 0.1, 3)},
+				{size = Vector3.new(0.3, 0.2, 6), offset = Vector3.new(-3, 0.1, 0)},
+				{size = Vector3.new(0.3, 0.2, 6), offset = Vector3.new(3, 0.1, 0)},
+			}) do
+				local rim = Instance.new("Part")
+				rim.Name = "PedestalRim"
+				rim.Size = rimInfo.size
+				rim.Position = modelPos + rimInfo.offset
+				rim.Anchored = true
+				rim.CanCollide = false
+				rim.Color = rarityColor
+				rim.Material = Enum.Material.Neon
+				rim.Parent = workspace
+			end
+
+			-- ===== Green Income Pad (in front of pedestal) =====
+			local padPos = modelPos + Vector3.new(0, -0.6, 4.2)
+			local incomePad = Instance.new("Part")
+			incomePad.Name = "IncomePad"
+			incomePad.Size = Vector3.new(5, 0.3, 2.5)
+			incomePad.Position = padPos
+			incomePad.Anchored = true
+			incomePad.Color = Color3.fromRGB(50, 180, 50)
+			incomePad.Material = Enum.Material.Neon
+			incomePad.Parent = workspace
+
+			-- Income text on the green pad
+			local incomePerSec = brainrotInfo.income * count
+			local incomeGui = Instance.new("BillboardGui")
+			incomeGui.Size = UDim2.new(0, 160, 0, 45)
+			incomeGui.StudsOffset = Vector3.new(0, 1.2, 0)
+			incomeGui.Adornee = incomePad
+			incomeGui.AlwaysOnTop = false
+			incomeGui.Parent = incomePad
+
+			local incomeLabel = Instance.new("TextLabel")
+			incomeLabel.Size = UDim2.new(1, 0, 1, 0)
+			incomeLabel.BackgroundTransparency = 1
+			incomeLabel.Text = "$" .. formatNumber(incomePerSec) .. "/s"
+			incomeLabel.TextColor3 = Color3.fromRGB(50, 255, 50)
+			incomeLabel.TextScaled = true
+			incomeLabel.Font = Enum.Font.GothamBold
+			incomeLabel.Parent = incomeGui
+
+			-- Create a container model for the brainrot + pedestal parts
 			local container = nil
 			local adorneePart = nil
 
+			-- Try to use a real model from BrainrotModels folder
 			if brainrotModelsFolder then
 				local template = brainrotModelsFolder:FindFirstChild(brainrotName)
 				if template then
@@ -872,7 +1073,7 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 							end
 						end
 
-						-- Position the model
+						-- Position the model on pedestal
 						local offset = modelPos + Vector3.new(0, 2, 0) - primaryPart.Position
 						for _, part in ipairs(container:GetDescendants()) do
 							if part:IsA("BasePart") then
@@ -915,72 +1116,48 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 				head.Material = Enum.Material.SmoothPlastic
 				head.Parent = container
 
-				-- Face (eyes and mouth on the head)
+				-- Face
 				local face = Instance.new("Decal")
 				face.Name = "Face"
 				face.Texture = "rbxassetid://7075502596"
 				face.Face = Enum.NormalId.Front
 				face.Parent = head
 
-				-- Left eye
-				local leftEye = Instance.new("Part")
-				leftEye.Name = "LeftEye"
-				leftEye.Size = Vector3.new(0.35, 0.35, 0.2)
-				leftEye.Position = modelPos + Vector3.new(-0.35, 4.6, 0.85)
-				leftEye.Anchored = true
-				leftEye.Color = Color3.new(0, 0, 0)
-				leftEye.Material = Enum.Material.SmoothPlastic
-				leftEye.Parent = container
+				-- Eyes
+				for _, eyeOffset in ipairs({-0.35, 0.35}) do
+					local eye = Instance.new("Part")
+					eye.Name = "Eye"
+					eye.Size = Vector3.new(0.35, 0.35, 0.2)
+					eye.Position = modelPos + Vector3.new(eyeOffset, 4.6, 0.85)
+					eye.Anchored = true
+					eye.Color = Color3.new(0, 0, 0)
+					eye.Material = Enum.Material.SmoothPlastic
+					eye.Parent = container
+				end
 
-				-- Right eye
-				local rightEye = Instance.new("Part")
-				rightEye.Name = "RightEye"
-				rightEye.Size = Vector3.new(0.35, 0.35, 0.2)
-				rightEye.Position = modelPos + Vector3.new(0.35, 4.6, 0.85)
-				rightEye.Anchored = true
-				rightEye.Color = Color3.new(0, 0, 0)
-				rightEye.Material = Enum.Material.SmoothPlastic
-				rightEye.Parent = container
+				-- Arms
+				for _, armOffset in ipairs({-1.4, 1.4}) do
+					local arm = Instance.new("Part")
+					arm.Name = "Arm"
+					arm.Size = Vector3.new(0.8, 2, 0.8)
+					arm.Position = modelPos + Vector3.new(armOffset, 2.2, 0)
+					arm.Anchored = true
+					arm.Color = rarityColor
+					arm.Material = Enum.Material.SmoothPlastic
+					arm.Parent = container
+				end
 
-				-- Left arm
-				local leftArm = Instance.new("Part")
-				leftArm.Name = "LeftArm"
-				leftArm.Size = Vector3.new(0.8, 2, 0.8)
-				leftArm.Position = modelPos + Vector3.new(-1.4, 2.2, 0)
-				leftArm.Anchored = true
-				leftArm.Color = rarityColor
-				leftArm.Material = Enum.Material.SmoothPlastic
-				leftArm.Parent = container
-
-				-- Right arm
-				local rightArm = Instance.new("Part")
-				rightArm.Name = "RightArm"
-				rightArm.Size = Vector3.new(0.8, 2, 0.8)
-				rightArm.Position = modelPos + Vector3.new(1.4, 2.2, 0)
-				rightArm.Anchored = true
-				rightArm.Color = rarityColor
-				rightArm.Material = Enum.Material.SmoothPlastic
-				rightArm.Parent = container
-
-				-- Left leg
-				local leftLeg = Instance.new("Part")
-				leftLeg.Name = "LeftLeg"
-				leftLeg.Size = Vector3.new(0.9, 1.8, 0.9)
-				leftLeg.Position = modelPos + Vector3.new(-0.5, 0.9, 0)
-				leftLeg.Anchored = true
-				leftLeg.Color = rarityColor
-				leftLeg.Material = Enum.Material.SmoothPlastic
-				leftLeg.Parent = container
-
-				-- Right leg
-				local rightLeg = Instance.new("Part")
-				rightLeg.Name = "RightLeg"
-				rightLeg.Size = Vector3.new(0.9, 1.8, 0.9)
-				rightLeg.Position = modelPos + Vector3.new(0.5, 0.9, 0)
-				rightLeg.Anchored = true
-				rightLeg.Color = rarityColor
-				rightLeg.Material = Enum.Material.SmoothPlastic
-				rightLeg.Parent = container
+				-- Legs
+				for _, legOffset in ipairs({-0.5, 0.5}) do
+					local leg = Instance.new("Part")
+					leg.Name = "Leg"
+					leg.Size = Vector3.new(0.9, 1.8, 0.9)
+					leg.Position = modelPos + Vector3.new(legOffset, 0.9, 0)
+					leg.Anchored = true
+					leg.Color = rarityColor
+					leg.Material = Enum.Material.SmoothPlastic
+					leg.Parent = container
+				end
 
 				container.PrimaryPart = body
 				adorneePart = head
@@ -991,29 +1168,24 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 			if glowParent then
 				local glow = Instance.new("PointLight")
 				glow.Color = rarityColor
-				glow.Range = 8
-				glow.Brightness = 0.5
+				glow.Range = 10
+				glow.Brightness = 0.6
 				glow.Parent = glowParent
 			end
 
-			-- Platform/pedestal under the character
-			local pedestal = Instance.new("Part")
-			pedestal.Name = "Pedestal"
-			pedestal.Size = Vector3.new(3, 0.5, 3)
-			pedestal.Position = modelPos + Vector3.new(0, -0.25, 0)
-			pedestal.Anchored = true
-			pedestal.Color = Color3.fromRGB(40, 40, 40)
-			pedestal.Material = Enum.Material.SmoothPlastic
+			-- Parent pedestal parts into the container for cleanup
 			pedestal.Parent = container
+			pedestalTop.Parent = container
+			incomePad.Parent = container
 
 			container.Parent = workspace
 
-			-- Name and count label
+			-- Name and count label (floating above character)
 			local labelPart = adorneePart or container:FindFirstChildWhichIsA("BasePart")
 			if labelPart then
 				local nameGui = Instance.new("BillboardGui")
-				nameGui.Size = UDim2.new(0, 180, 0, 50)
-				nameGui.StudsOffset = Vector3.new(0, 3.5, 0)
+				nameGui.Size = UDim2.new(0, 200, 0, 55)
+				nameGui.StudsOffset = Vector3.new(0, 4, 0)
 				nameGui.Adornee = labelPart
 				nameGui.AlwaysOnTop = false
 				nameGui.Parent = labelPart

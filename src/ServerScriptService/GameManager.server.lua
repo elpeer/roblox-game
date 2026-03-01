@@ -135,6 +135,11 @@ function GameManager.CreateBase(player: Player): Vector3
 	local bsX = GameConfig.BASE_SIZE.X  -- 200
 	local bsZ = GameConfig.BASE_SIZE.Z  -- 200
 
+	-- Brainrot models for wall decorations
+	local BrainrotData = require(Modules:WaitForChild("BrainrotData"))
+	local brainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotModels")
+		or ReplicatedStorage:WaitForChild("BrainrotModels", 5)
+
 	-- ============================
 	-- MAIN GROUND PLATFORM (clean modern look)
 	-- ============================
@@ -301,7 +306,7 @@ function GameManager.CreateBase(player: Player): Vector3
 		topGrass.Parent = workspace
 		table.insert(parts, topGrass)
 
-		-- Trees along the top of the wall
+		-- Trees and brainrot models along the top of the wall
 		local wallLength = (lengthAxis == "X") and wallSize.X or wallSize.Z
 		local treeCount = math.floor(wallLength / 25)
 		for t = 1, treeCount do
@@ -312,36 +317,87 @@ function GameManager.CreateBase(player: Player): Vector3
 			else
 				treeOffset = Vector3.new(0, wallHeight, -wallSize.Z / 2 + tFrac * wallSize.Z)
 			end
-			-- Vary tree position slightly
 			local jitter = math.sin(t * 7.3) * 2
-
-			local trunk = Instance.new("Part")
-			trunk.Name = wallName .. "_TreeTrunk_" .. userId .. "_" .. t
-			trunk.Size = Vector3.new(2, 8, 2)
-			trunk.Position = wallPos + treeOffset + Vector3.new(
+			local spotPos = wallPos + treeOffset + Vector3.new(
 				(lengthAxis == "Z") and jitter or 0,
-				4.5,
+				0,
 				(lengthAxis == "X") and jitter or 0
 			)
-			trunk.Anchored = true
-			trunk.Color = Color3.fromRGB(80, 55, 25)
-			trunk.Material = Enum.Material.Wood
-			trunk.Shape = Enum.PartType.Cylinder
-			trunk.Orientation = Vector3.new(0, 0, 90)
-			trunk.Parent = workspace
-			table.insert(parts, trunk)
 
-			local leaves = Instance.new("Part")
-			leaves.Name = wallName .. "_TreeLeaves_" .. userId .. "_" .. t
-			local leafScale = 0.8 + math.abs(math.sin(t * 3.7)) * 0.6
-			leaves.Size = Vector3.new(8 * leafScale, 7 * leafScale, 8 * leafScale)
-			leaves.Position = trunk.Position + Vector3.new(0, 6 * leafScale, 0)
-			leaves.Anchored = true
-			leaves.Color = wallTreeColors[(t % #wallTreeColors) + 1]
-			leaves.Material = Enum.Material.Grass
-			leaves.Shape = Enum.PartType.Ball
-			leaves.Parent = workspace
-			table.insert(parts, leaves)
+			-- Every 3rd spot: place a brainrot model instead of a tree
+			local placedBrainrot = false
+			if t % 3 == 0 and brainrotModelsFolder then
+				local allChars = BrainrotData.Characters
+				local randomChar = allChars[math.random(1, #allChars)]
+				local template = brainrotModelsFolder:FindFirstChild(randomChar.name)
+				if template then
+					local brModel = template:Clone()
+					brModel.Name = "WallBrainrot_" .. userId .. "_" .. t
+
+					local primaryPart = brModel.PrimaryPart
+					if not primaryPart then
+						for _, child in ipairs(brModel:GetDescendants()) do
+							if child:IsA("BasePart") then
+								primaryPart = child
+								brModel.PrimaryPart = primaryPart
+								break
+							end
+						end
+					end
+
+					if primaryPart then
+						local displayScale = 2.0
+						for _, part in ipairs(brModel:GetDescendants()) do
+							if part:IsA("BasePart") then
+								part.Size = part.Size * displayScale
+							end
+						end
+
+						local targetPos = spotPos + Vector3.new(0, 4, 0)
+						local posOffset = targetPos - primaryPart.Position
+						for _, part in ipairs(brModel:GetDescendants()) do
+							if part:IsA("BasePart") then
+								part.Position = part.Position + posOffset
+								part.Anchored = true
+								part.CanCollide = false
+							end
+						end
+
+						brModel.Parent = workspace
+						table.insert(parts, brModel)
+						placedBrainrot = true
+					else
+						brModel:Destroy()
+					end
+				end
+			end
+
+			-- Default: place a tree
+			if not placedBrainrot then
+				local trunk = Instance.new("Part")
+				trunk.Name = wallName .. "_TreeTrunk_" .. userId .. "_" .. t
+				trunk.Size = Vector3.new(2, 8, 2)
+				trunk.Position = spotPos + Vector3.new(0, 4.5, 0)
+				trunk.Anchored = true
+				trunk.Color = Color3.fromRGB(80, 55, 25)
+				trunk.Material = Enum.Material.Wood
+				trunk.Shape = Enum.PartType.Cylinder
+				trunk.Orientation = Vector3.new(0, 0, 90)
+				trunk.Parent = workspace
+				table.insert(parts, trunk)
+
+				local leaves = Instance.new("Part")
+				leaves.Name = wallName .. "_TreeLeaves_" .. userId .. "_" .. t
+				local leafScale = 0.8 + math.abs(math.sin(t * 3.7)) * 0.6
+				leaves.Size = Vector3.new(8 * leafScale, 7 * leafScale, 8 * leafScale)
+				leaves.Position = trunk.Position + Vector3.new(0, 6 * leafScale, 0)
+				leaves.Anchored = true
+				leaves.Color = wallTreeColors[(t % #wallTreeColors) + 1]
+				leaves.Material = Enum.Material.Grass
+				leaves.Shape = Enum.PartType.Ball
+				leaves.Parent = workspace
+				table.insert(parts, leaves)
+			end
 		end
 	end
 

@@ -89,7 +89,7 @@ local function tryGetRealModel(name, pos, rarityColor, scale, userId)
 	nameLabel.Text = name
 	nameLabel.TextColor3 = rarityColor
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.Font = Enum.Font.GothamBlack
 	nameLabel.TextStrokeTransparency = 0
 	nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	nameLabel.Parent = nameGui
@@ -170,7 +170,7 @@ local function tryGetRealCarryModel(name, head, rarityColor, userId)
 	nameLabel.Text = name
 	nameLabel.TextColor3 = rarityColor
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.Font = Enum.Font.GothamBlack
 	nameLabel.TextStrokeTransparency = 0
 	nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	nameLabel.Parent = nameGui
@@ -389,7 +389,7 @@ local function createBrainrotWithPrompt(name, pos, rarityColor, userId, brainrot
 		rarityLabel.Text = "[" .. brainrotInfo.rarity .. "]"
 		rarityLabel.TextColor3 = Color3.new(1, 1, 1)
 		rarityLabel.TextScaled = true
-		rarityLabel.Font = Enum.Font.FredokaOne
+		rarityLabel.Font = Enum.Font.GothamBlack
 		rarityLabel.TextStrokeTransparency = 0
 		rarityLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 		rarityLabel.Parent = rarityBg
@@ -402,7 +402,7 @@ local function createBrainrotWithPrompt(name, pos, rarityColor, userId, brainrot
 		nameLabel.Text = name
 		nameLabel.TextColor3 = rarityColor
 		nameLabel.TextScaled = true
-		nameLabel.Font = Enum.Font.FredokaOne
+		nameLabel.Font = Enum.Font.GothamBlack
 		nameLabel.TextStrokeTransparency = 0
 		nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 		nameLabel.Parent = nameGui
@@ -421,7 +421,7 @@ local function createBrainrotWithPrompt(name, pos, rarityColor, userId, brainrot
 		hintLabel.Text = "[E] Collect"
 		hintLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
 		hintLabel.TextScaled = true
-		hintLabel.Font = Enum.Font.FredokaOne
+		hintLabel.Font = Enum.Font.GothamBlack
 		hintLabel.TextStrokeTransparency = 0
 		hintLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 		hintLabel.Parent = hintGui
@@ -547,7 +547,7 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 	stageLabel.Text = "Abyss #" .. abyssNum .. "\n[" .. tierName .. "]\nJump: " .. abyssWidth
 	stageLabel.TextColor3 = tierColor
 	stageLabel.TextScaled = true
-	stageLabel.Font = Enum.Font.FredokaOne
+	stageLabel.Font = Enum.Font.GothamBlack
 	stageLabel.TextStrokeTransparency = 0
 	stageLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	stageLabel.Parent = stageSign
@@ -1081,7 +1081,7 @@ function MissionManager.CarryBrainrotOnHead(player: Player, brainrotName: string
 	nameLabel.Text = brainrotName
 	nameLabel.TextColor3 = rarityColor
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.Font = Enum.Font.GothamBlack
 	nameLabel.TextStrokeTransparency = 0
 	nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	nameLabel.Parent = nameGui

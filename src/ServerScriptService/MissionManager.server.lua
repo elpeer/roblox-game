@@ -89,7 +89,9 @@ local function tryGetRealModel(name, pos, rarityColor, scale, userId)
 	nameLabel.Text = name
 	nameLabel.TextColor3 = rarityColor
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.TextStrokeTransparency = 0
+	nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	nameLabel.Parent = nameGui
 
 	return model
@@ -168,7 +170,9 @@ local function tryGetRealCarryModel(name, head, rarityColor, userId)
 	nameLabel.Text = name
 	nameLabel.TextColor3 = rarityColor
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.TextStrokeTransparency = 0
+	nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	nameLabel.Parent = nameGui
 
 	model.Parent = workspace
@@ -385,7 +389,9 @@ local function createBrainrotWithPrompt(name, pos, rarityColor, userId, brainrot
 		rarityLabel.Text = "[" .. brainrotInfo.rarity .. "]"
 		rarityLabel.TextColor3 = Color3.new(1, 1, 1)
 		rarityLabel.TextScaled = true
-		rarityLabel.Font = Enum.Font.GothamBold
+		rarityLabel.Font = Enum.Font.FredokaOne
+		rarityLabel.TextStrokeTransparency = 0
+		rarityLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 		rarityLabel.Parent = rarityBg
 
 		-- Brainrot name label
@@ -396,8 +402,8 @@ local function createBrainrotWithPrompt(name, pos, rarityColor, userId, brainrot
 		nameLabel.Text = name
 		nameLabel.TextColor3 = rarityColor
 		nameLabel.TextScaled = true
-		nameLabel.Font = Enum.Font.GothamBold
-		nameLabel.TextStrokeTransparency = 0.5
+		nameLabel.Font = Enum.Font.FredokaOne
+		nameLabel.TextStrokeTransparency = 0
 		nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 		nameLabel.Parent = nameGui
 
@@ -415,8 +421,8 @@ local function createBrainrotWithPrompt(name, pos, rarityColor, userId, brainrot
 		hintLabel.Text = "[E] Collect"
 		hintLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
 		hintLabel.TextScaled = true
-		hintLabel.Font = Enum.Font.GothamBold
-		hintLabel.TextStrokeTransparency = 0.5
+		hintLabel.Font = Enum.Font.FredokaOne
+		hintLabel.TextStrokeTransparency = 0
 		hintLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 		hintLabel.Parent = hintGui
 
@@ -541,7 +547,9 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 	stageLabel.Text = "Abyss #" .. abyssNum .. "\n[" .. tierName .. "]\nJump: " .. abyssWidth
 	stageLabel.TextColor3 = tierColor
 	stageLabel.TextScaled = true
-	stageLabel.Font = Enum.Font.GothamBold
+	stageLabel.Font = Enum.Font.FredokaOne
+	stageLabel.TextStrokeTransparency = 0
+	stageLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	stageLabel.Parent = stageSign
 
 	-- Landing platform
@@ -630,6 +638,107 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 	lavaLight.Range = 50
 	lavaLight.Brightness = 1.5
 	lavaLight.Parent = lavaGlow
+
+	-- ============================
+	-- FIRE BRAZIERS around stage edges
+	-- ============================
+	local brazierPositions = {
+		-- Start platform corners
+		{x = basePosition.X - GameConfig.PLATFORM_LENGTH / 2 + 3, z = startZ + 2},
+		{x = basePosition.X + GameConfig.PLATFORM_LENGTH / 2 - 3, z = startZ + 2},
+		{x = basePosition.X - GameConfig.PLATFORM_LENGTH / 2 + 3, z = startZ + GameConfig.PLATFORM_WIDTH - 2},
+		{x = basePosition.X + GameConfig.PLATFORM_LENGTH / 2 - 3, z = startZ + GameConfig.PLATFORM_WIDTH - 2},
+		-- Landing platform corners
+		{x = basePosition.X - GameConfig.PLATFORM_LENGTH / 2 + 3, z = landingZ + 2},
+		{x = basePosition.X + GameConfig.PLATFORM_LENGTH / 2 - 3, z = landingZ + 2},
+		{x = basePosition.X - GameConfig.PLATFORM_LENGTH / 2 + 3, z = landingZ + GameConfig.PLATFORM_WIDTH - 2},
+		{x = basePosition.X + GameConfig.PLATFORM_LENGTH / 2 - 3, z = landingZ + GameConfig.PLATFORM_WIDTH - 2},
+	}
+	for bi, bpos in ipairs(brazierPositions) do
+		-- Stone pillar base
+		local brazierBase = Instance.new("Part")
+		brazierBase.Name = "Brazier_" .. userId .. "_" .. abyssNum .. "_" .. bi
+		brazierBase.Size = Vector3.new(2, 3, 2)
+		brazierBase.Position = Vector3.new(bpos.x, basePosition.Y + 2, bpos.z)
+		brazierBase.Anchored = true
+		brazierBase.Color = Color3.fromRGB(60, 60, 65)
+		brazierBase.Material = Enum.Material.Slate
+		brazierBase.Parent = workspace
+		table.insert(parts, brazierBase)
+
+		-- Fire bowl
+		local fireBowl = Instance.new("Part")
+		fireBowl.Name = "FireBowl_" .. userId .. "_" .. abyssNum .. "_" .. bi
+		fireBowl.Size = Vector3.new(2.5, 1, 2.5)
+		fireBowl.Position = Vector3.new(bpos.x, basePosition.Y + 3.8, bpos.z)
+		fireBowl.Anchored = true
+		fireBowl.CanCollide = false
+		fireBowl.Color = Color3.fromRGB(255, 100, 0)
+		fireBowl.Material = Enum.Material.Neon
+		fireBowl.Parent = workspace
+		table.insert(parts, fireBowl)
+
+		-- Fire particles
+		local brazierFire = Instance.new("ParticleEmitter")
+		brazierFire.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 60)),
+			ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 140, 20)),
+			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(255, 50, 0)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 20, 0)),
+		})
+		brazierFire.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.3, 2),
+			NumberSequenceKeypoint.new(0.7, 1.2),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		brazierFire.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.1),
+			NumberSequenceKeypoint.new(0.5, 0.3),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		brazierFire.Lifetime = NumberRange.new(0.3, 1)
+		brazierFire.Rate = 20
+		brazierFire.Speed = NumberRange.new(3, 6)
+		brazierFire.SpreadAngle = Vector2.new(12, 12)
+		brazierFire.LightEmission = 1
+		brazierFire.Parent = fireBowl
+
+		-- Fire glow light
+		local brazierLight = Instance.new("PointLight")
+		brazierLight.Color = Color3.fromRGB(255, 130, 30)
+		brazierLight.Range = 20
+		brazierLight.Brightness = 0.8
+		brazierLight.Parent = fireBowl
+	end
+
+	-- Edge flame strips (fire running along gap edges)
+	for _, edgeInfo in ipairs({
+		{part = edgeStrip, name = "StartEdgeFire"},
+		{part = landingEdge, name = "LandingEdgeFire"},
+	}) do
+		local edgeFire = Instance.new("ParticleEmitter")
+		edgeFire.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 50)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 80, 0)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 20, 0)),
+		})
+		edgeFire.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.5, 2),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		edgeFire.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.3),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		edgeFire.Lifetime = NumberRange.new(0.3, 0.8)
+		edgeFire.Rate = 12
+		edgeFire.Speed = NumberRange.new(2, 5)
+		edgeFire.SpreadAngle = Vector2.new(10, 10)
+		edgeFire.LightEmission = 1
+		edgeFire.Parent = edgeInfo.part
+	end
 
 	-- Kill zone (invisible, above lava)
 	local killZone = Instance.new("Part")
@@ -972,7 +1081,9 @@ function MissionManager.CarryBrainrotOnHead(player: Player, brainrotName: string
 	nameLabel.Text = brainrotName
 	nameLabel.TextColor3 = rarityColor
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.TextStrokeTransparency = 0
+	nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	nameLabel.Parent = nameGui
 
 	carryModel.PrimaryPart = miniBody

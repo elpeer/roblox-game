@@ -28,9 +28,11 @@ local playerData = nil
 -- Shared module for GUI to access
 local ClientState = {}
 ClientState.PlayerData = nil
+ClientState.CarryingBrainrot = nil -- { name = string, rarity = string } or nil
 ClientState.OnDataUpdated = Instance.new("BindableEvent")
 ClientState.OnBrainrotEarned = Instance.new("BindableEvent")
 ClientState.OnPurchaseResult = Instance.new("BindableEvent")
+ClientState.OnCarryUpdated = Instance.new("BindableEvent")
 
 -- Make accessible to GUI scripts
 _G.ClientState = ClientState
@@ -52,6 +54,17 @@ PurchaseResultEvent.OnClientEvent:Connect(function(success, treadmillName)
 	ClientState.OnPurchaseResult:Fire(success, treadmillName)
 end)
 
+-- Handle carry update
+local CarryUpdateEvent = Remotes:WaitForChild("CarryUpdate")
+CarryUpdateEvent.OnClientEvent:Connect(function(brainrotName, rarity)
+	if brainrotName then
+		ClientState.CarryingBrainrot = { name = brainrotName, rarity = rarity }
+	else
+		ClientState.CarryingBrainrot = nil
+	end
+	ClientState.OnCarryUpdated:Fire(ClientState.CarryingBrainrot)
+end)
+
 -- Functions exposed for GUI
 function ClientState.ClickTreadmill()
 	TreadmillClickEvent:FireServer()
@@ -64,13 +77,28 @@ end
 function ClientState.GetIncomePerSecond(): number
 	if not playerData then return 0 end
 	local total = 0
-	for brainrotName, count in pairs(playerData.collectedBrainrots or {}) do
+	-- Only placed brainrots earn money
+	for brainrotName, count in pairs(playerData.placedBrainrots or {}) do
 		local info = BrainrotData.GetByName(brainrotName)
 		if info then
 			total = total + (info.income * count)
 		end
 	end
 	return total
+end
+
+function ClientState.DropBrainrot()
+	local DropEvent = Remotes:FindFirstChild("DropBrainrot")
+	if DropEvent then
+		DropEvent:FireServer()
+	end
+end
+
+function ClientState.PlaceBrainrots()
+	local PlaceEvent = Remotes:FindFirstChild("PlaceBrainrots")
+	if PlaceEvent then
+		PlaceEvent:FireServer()
+	end
 end
 
 function ClientState.FormatNumber(n: number): string

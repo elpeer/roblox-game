@@ -36,6 +36,48 @@ TreadmillData.Treadmills = {
 		color = Color3.fromRGB(255, 50, 50),
 		order = 5,
 	},
+	{
+		name = "Hyper Treadmill",
+		price = 100000,
+		speedPerClick = 100,
+		color = Color3.fromRGB(255, 100, 255),
+		order = 6,
+	},
+	{
+		name = "Cosmic Treadmill",
+		price = 500000,
+		speedPerClick = 200,
+		color = Color3.fromRGB(0, 255, 200),
+		order = 7,
+	},
+	{
+		name = "Galactic Treadmill",
+		price = 2000000,
+		speedPerClick = 500,
+		color = Color3.fromRGB(100, 50, 255),
+		order = 8,
+	},
+	{
+		name = "Divine Treadmill",
+		price = 10000000,
+		speedPerClick = 1000,
+		color = Color3.fromRGB(255, 255, 100),
+		order = 9,
+	},
+	{
+		name = "Brainrot God Treadmill",
+		price = 50000000,
+		speedPerClick = 2500,
+		color = Color3.fromRGB(255, 150, 0),
+		order = 10,
+	},
+	{
+		name = "OG Treadmill",
+		price = 200000000,
+		speedPerClick = 5000,
+		color = Color3.fromRGB(150, 255, 255),
+		order = 11,
+	},
 }
 
 function TreadmillData.GetByName(name: string)

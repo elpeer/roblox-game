@@ -36,14 +36,14 @@ function BrainrotManager.AwardBrainrots(player: Player, abyssNumber: number): { 
 	return awarded
 end
 
--- Calculate total passive income per second for a player
+-- Calculate total passive income per second for a player (only placed brainrots earn)
 function BrainrotManager.CalculateIncomePerSecond(player: Player): number
 	local DataManager = getDataManager()
 	local data = DataManager.GetData(player)
 	if not data then return 0 end
 
 	local totalIncome = 0
-	for brainrotName, count in pairs(data.collectedBrainrots) do
+	for brainrotName, count in pairs(data.placedBrainrots or {}) do
 		local brainrotInfo = BrainrotData.GetByName(brainrotName)
 		if brainrotInfo then
 			totalIncome = totalIncome + (brainrotInfo.income * count)

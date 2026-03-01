@@ -29,7 +29,58 @@ local remoteNames = {
 	"BrainrotNotification",-- Server → Client
 	"PurchaseResult",      -- Server → Client
 	"RequestData",         -- Client → Server
+	"DropBrainrot",        -- Client → Server (drop carried brainrot)
+	"CarryUpdate",         -- Server → Client (notify carry state change)
+	"PlaceBrainrots",      -- Client → Server (place inventory brainrots on stage)
 }
+
+------------------------------------------------------------
+-- Space Environment Setup
+------------------------------------------------------------
+local Lighting = game:GetService("Lighting")
+Lighting.ClockTime = 0
+Lighting.Brightness = 0.3
+Lighting.Ambient = Color3.fromRGB(15, 10, 30)
+Lighting.OutdoorAmbient = Color3.fromRGB(15, 10, 30)
+Lighting.FogEnd = 10000
+Lighting.FogColor = Color3.fromRGB(5, 5, 15)
+Lighting.GlobalShadows = true
+
+-- Remove existing sky/atmosphere
+for _, child in ipairs(Lighting:GetChildren()) do
+	if child:IsA("Sky") or child:IsA("Atmosphere") or child:IsA("BloomEffect") then
+		child:Destroy()
+	end
+end
+
+-- Space sky (black with stars)
+local sky = Instance.new("Sky")
+sky.StarCount = 3000
+sky.CelestialBodiesShown = false
+sky.SkyboxBk = ""
+sky.SkyboxDn = ""
+sky.SkyboxFt = ""
+sky.SkyboxLf = ""
+sky.SkyboxRt = ""
+sky.SkyboxUp = ""
+sky.Parent = Lighting
+
+-- Space atmosphere
+local atmosphere = Instance.new("Atmosphere")
+atmosphere.Density = 0.3
+atmosphere.Color = Color3.fromRGB(5, 5, 20)
+atmosphere.Decay = Color3.fromRGB(10, 5, 25)
+atmosphere.Glare = 0
+atmosphere.Haze = 0
+atmosphere.Offset = 0
+atmosphere.Parent = Lighting
+
+-- Bloom for glowing effects
+local bloom = Instance.new("BloomEffect")
+bloom.Intensity = 0.5
+bloom.Size = 24
+bloom.Threshold = 1.5
+bloom.Parent = Lighting
 
 for _, name in ipairs(remoteNames) do
 	local remote = Instance.new("RemoteEvent")
@@ -527,6 +578,125 @@ function GameManager.CreateBase(player: Player): Vector3
 	spawnLocation.Parent = workspace
 	table.insert(parts, spawnLocation)
 
+	-- ============================
+	-- GATE TRIGGER (detect player returning to base with carried brainrot)
+	-- ============================
+	local gateTrigger = Instance.new("Part")
+	gateTrigger.Name = "GateTrigger_" .. userId
+	gateTrigger.Size = Vector3.new(GameConfig.PLATFORM_LENGTH, 20, 6)
+	gateTrigger.Position = Vector3.new(basePosition.X, basePosition.Y + 10, archZ)
+	gateTrigger.Anchored = true
+	gateTrigger.Transparency = 1
+	gateTrigger.CanCollide = false
+	gateTrigger.Parent = workspace
+	table.insert(parts, gateTrigger)
+
+	gateTrigger.Touched:Connect(function(hit)
+		local hitPlayer = Players:GetPlayerFromCharacter(hit.Parent)
+		if hitPlayer and hitPlayer.UserId == userId then
+			-- Check if player is coming FROM the abyss (moving in -Z direction)
+			local hrp = hit.Parent:FindFirstChild("HumanoidRootPart")
+			if hrp and hrp.Velocity.Z < -1 then
+				-- Player is returning to base
+				task.defer(function()
+					if _G.MissionManager then
+						_G.MissionManager.OnPlayerReturnedToBase(hitPlayer)
+					end
+				end)
+			end
+		end
+	end)
+
+	-- ============================
+	-- BRAINROT PLACEMENT PROMPT (on display area)
+	-- ============================
+	local placementPart = Instance.new("Part")
+	placementPart.Name = "PlacementArea_" .. userId
+	placementPart.Size = Vector3.new(30, 4, 30)
+	placementPart.Position = displayAreaPos + Vector3.new(0, 3, 0)
+	placementPart.Anchored = true
+	placementPart.Transparency = 1
+	placementPart.CanCollide = false
+	placementPart.Parent = workspace
+	table.insert(parts, placementPart)
+
+	local placePrompt = Instance.new("ProximityPrompt")
+	placePrompt.ActionText = "Place Brainrots"
+	placePrompt.ObjectText = "Display Stage"
+	placePrompt.KeyboardKeyCode = Enum.KeyCode.E
+	placePrompt.HoldDuration = 0
+	placePrompt.MaxActivationDistance = 20
+	placePrompt.RequiresLineOfSight = false
+	placePrompt.Parent = placementPart
+
+	placePrompt.Triggered:Connect(function(triggerPlayer)
+		if triggerPlayer.UserId ~= userId then return end
+		local DataManager = _G.DataManager
+		if not DataManager then return end
+		local data = DataManager.GetData(triggerPlayer)
+		if not data then return end
+
+		-- Check if there are brainrots to place
+		local hasUnplaced = false
+		for _, count in pairs(data.collectedBrainrots) do
+			if count > 0 then hasUnplaced = true break end
+		end
+		if not hasUnplaced then return end
+
+		-- Place all brainrots from inventory to stage
+		DataManager.PlaceAllBrainrots(triggerPlayer)
+
+		-- Update display
+		GameManager.UpdateBrainrotDisplay(triggerPlayer)
+
+		-- Notify client
+		local updateEvent = remotesFolder:FindFirstChild("PlayerDataUpdate")
+		if updateEvent then
+			updateEvent:FireClient(triggerPlayer, DataManager.GetData(triggerPlayer))
+		end
+
+		local notifyEvent = remotesFolder:FindFirstChild("BrainrotNotification")
+		if notifyEvent then
+			notifyEvent:FireClient(triggerPlayer, {"Brainrots placed on stage!"}, "Legendary")
+		end
+	end)
+
+	-- ============================
+	-- SPACE DUST PARTICLES (around the course area)
+	-- ============================
+	local spaceDust = Instance.new("Part")
+	spaceDust.Name = "SpaceDust_" .. userId
+	spaceDust.Size = Vector3.new(200, 80, 600)
+	spaceDust.Position = basePosition + Vector3.new(0, 40, 300)
+	spaceDust.Anchored = true
+	spaceDust.Transparency = 1
+	spaceDust.CanCollide = false
+	spaceDust.Parent = workspace
+	table.insert(parts, spaceDust)
+
+	local dustEmitter = Instance.new("ParticleEmitter")
+	dustEmitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 150, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 200, 255)),
+	})
+	dustEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.05),
+		NumberSequenceKeypoint.new(0.5, 0.15),
+		NumberSequenceKeypoint.new(1, 0.05),
+	})
+	dustEmitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.7),
+		NumberSequenceKeypoint.new(0.5, 0.3),
+		NumberSequenceKeypoint.new(1, 0.7),
+	})
+	dustEmitter.Lifetime = NumberRange.new(5, 12)
+	dustEmitter.Rate = 30
+	dustEmitter.Speed = NumberRange.new(0.5, 2)
+	dustEmitter.SpreadAngle = Vector2.new(180, 180)
+	dustEmitter.LightEmission = 1
+	dustEmitter.Parent = spaceDust
+
 	return basePosition
 end
 
@@ -865,6 +1035,31 @@ requestDataEvent.OnServerEvent:Connect(function(player)
 		if updateEvent and data then
 			updateEvent:FireClient(player, data)
 		end
+	end
+end)
+
+-- Handle DropBrainrot from client
+local dropEvent = remotesFolder:WaitForChild("DropBrainrot")
+dropEvent.OnServerEvent:Connect(function(player)
+	if _G.MissionManager then
+		_G.MissionManager.DropCarriedBrainrot(player)
+	end
+end)
+
+-- Handle PlaceBrainrots from client
+local placeEvent = remotesFolder:WaitForChild("PlaceBrainrots")
+placeEvent.OnServerEvent:Connect(function(player)
+	local DataManager = _G.DataManager
+	if not DataManager then return end
+	local data = DataManager.GetData(player)
+	if not data then return end
+
+	DataManager.PlaceAllBrainrots(player)
+	GameManager.UpdateBrainrotDisplay(player)
+
+	local updateEvent = remotesFolder:FindFirstChild("PlayerDataUpdate")
+	if updateEvent then
+		updateEvent:FireClient(player, DataManager.GetData(player))
 	end
 end)
 

@@ -56,34 +56,42 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
 ------------------------------------------------------------
--- 1. MAIN HUD (top bar) - responsive
+-- 1. MAIN HUD (top-left corner, vertical stat cards)
 ------------------------------------------------------------
 local hudFrame = Instance.new("Frame")
 hudFrame.Name = "HUD"
-hudFrame.Size = UDim2.new(0.9, 0, 0, 50)
-hudFrame.Position = UDim2.new(0.05, 0, 0, 10)
-hudFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-hudFrame.BackgroundTransparency = 0.15
+hudFrame.Size = UDim2.new(0, 210, 0, 195)
+hudFrame.Position = UDim2.new(0, 12, 0, 12)
+hudFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+hudFrame.BackgroundTransparency = 0.2
 hudFrame.Parent = screenGui
-createCorner(hudFrame, 12)
-createStroke(hudFrame, Color3.fromRGB(80, 80, 120), 2)
+createCorner(hudFrame, 14)
+createStroke(hudFrame, Color3.fromRGB(50, 50, 80), 2)
+
+local hudPadding = Instance.new("UIPadding")
+hudPadding.PaddingTop = UDim.new(0, 8)
+hudPadding.PaddingBottom = UDim.new(0, 8)
+hudPadding.PaddingLeft = UDim.new(0, 10)
+hudPadding.PaddingRight = UDim.new(0, 10)
+hudPadding.Parent = hudFrame
 
 local hudLayout = Instance.new("UIListLayout")
-hudLayout.FillDirection = Enum.FillDirection.Horizontal
-hudLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-hudLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-hudLayout.Padding = UDim.new(0, 8)
+hudLayout.FillDirection = Enum.FillDirection.Vertical
+hudLayout.Padding = UDim.new(0, 6)
 hudLayout.Parent = hudFrame
 
 local function createHudStat(name, icon, color)
 	local container = Instance.new("Frame")
 	container.Name = name
-	container.Size = UDim2.new(0.22, 0, 0, 38)
-	container.BackgroundTransparency = 1
+	container.Size = UDim2.new(1, 0, 0, 38)
+	container.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+	container.BackgroundTransparency = 0.3
 	container.Parent = hudFrame
+	createCorner(container, 10)
 
 	local iconLabel = Instance.new("TextLabel")
-	iconLabel.Size = UDim2.new(0, 20, 1, 0)
+	iconLabel.Size = UDim2.new(0, 30, 1, 0)
+	iconLabel.Position = UDim2.new(0, 6, 0, 0)
 	iconLabel.BackgroundTransparency = 1
 	iconLabel.Text = icon
 	iconLabel.TextScaled = true
@@ -93,8 +101,8 @@ local function createHudStat(name, icon, color)
 
 	local valueLabel = Instance.new("TextLabel")
 	valueLabel.Name = "Value"
-	valueLabel.Size = UDim2.new(1, -25, 1, 0)
-	valueLabel.Position = UDim2.new(0, 25, 0, 0)
+	valueLabel.Size = UDim2.new(1, -42, 1, 0)
+	valueLabel.Position = UDim2.new(0, 38, 0, 0)
 	valueLabel.BackgroundTransparency = 1
 	valueLabel.Text = "0"
 	valueLabel.TextScaled = true
@@ -112,38 +120,57 @@ local abyssLabel = createHudStat("Abyss", "#", Color3.fromRGB(255, 100, 100))
 local incomeLabel = createHudStat("Income", "+", Color3.fromRGB(100, 255, 100))
 
 ------------------------------------------------------------
--- 2. BOTTOM BUTTONS (Inventory, Shop) - responsive
+-- 2. SIDE BUTTONS (right side, vertical with icons)
 ------------------------------------------------------------
 local buttonBar = Instance.new("Frame")
 buttonBar.Name = "ButtonBar"
-buttonBar.Size = UDim2.new(0, 250, 0, 50)
-buttonBar.Position = UDim2.new(0.5, -125, 1, -60)
+buttonBar.Size = UDim2.new(0, 70, 0, 155)
+buttonBar.Position = UDim2.new(1, -82, 0.5, -77)
 buttonBar.BackgroundTransparency = 1
 buttonBar.Parent = screenGui
 
 local buttonLayout = Instance.new("UIListLayout")
-buttonLayout.FillDirection = Enum.FillDirection.Horizontal
+buttonLayout.FillDirection = Enum.FillDirection.Vertical
 buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-buttonLayout.Padding = UDim.new(0, 10)
+buttonLayout.Padding = UDim.new(0, 12)
 buttonLayout.Parent = buttonBar
 
-local function createMenuButton(name, text, color)
+local function createMenuButton(name, icon, label, color)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
-	btn.Size = UDim2.new(0, 115, 0, 45)
+	btn.Size = UDim2.new(0, 65, 0, 65)
 	btn.BackgroundColor3 = color
-	btn.Text = text
-	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.TextScaled = true
-	btn.Font = Enum.Font.GothamBold
+	btn.Text = ""
+	btn.AutoButtonColor = true
 	btn.Parent = buttonBar
-	createCorner(btn, 10)
-	createStroke(btn, Color3.fromRGB(255, 255, 255), 1)
+	createCorner(btn, 16)
+	createStroke(btn, Color3.fromRGB(255, 255, 255), 2)
+
+	local iconLbl = Instance.new("TextLabel")
+	iconLbl.Size = UDim2.new(1, 0, 0.55, 0)
+	iconLbl.Position = UDim2.new(0, 0, 0.02, 0)
+	iconLbl.BackgroundTransparency = 1
+	iconLbl.Text = icon
+	iconLbl.TextScaled = true
+	iconLbl.Font = Enum.Font.GothamBold
+	iconLbl.TextColor3 = Color3.new(1, 1, 1)
+	iconLbl.Parent = btn
+
+	local textLbl = Instance.new("TextLabel")
+	textLbl.Size = UDim2.new(1, 0, 0.35, 0)
+	textLbl.Position = UDim2.new(0, 0, 0.62, 0)
+	textLbl.BackgroundTransparency = 1
+	textLbl.Text = label
+	textLbl.TextScaled = true
+	textLbl.Font = Enum.Font.GothamBold
+	textLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+	textLbl.Parent = btn
+
 	return btn
 end
 
-local inventoryBtn = createMenuButton("InventoryBtn", "Inventory", Color3.fromRGB(60, 60, 150))
-local shopBtn = createMenuButton("ShopBtn", "Shop", Color3.fromRGB(60, 150, 60))
+local inventoryBtn = createMenuButton("InventoryBtn", "[]", "Bag", Color3.fromRGB(70, 70, 170))
+local shopBtn = createMenuButton("ShopBtn", "$", "Shop", Color3.fromRGB(70, 170, 70))
 
 ------------------------------------------------------------
 -- 3. INVENTORY PANEL - MOBILE RESPONSIVE

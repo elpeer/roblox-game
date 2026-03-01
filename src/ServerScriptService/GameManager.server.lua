@@ -35,52 +35,55 @@ local remoteNames = {
 }
 
 ------------------------------------------------------------
--- Space Environment Setup
+-- Daylight Environment Setup
 ------------------------------------------------------------
 local Lighting = game:GetService("Lighting")
-Lighting.ClockTime = 0
-Lighting.Brightness = 0.3
-Lighting.Ambient = Color3.fromRGB(15, 10, 30)
-Lighting.OutdoorAmbient = Color3.fromRGB(15, 10, 30)
+Lighting.ClockTime = 14
+Lighting.Brightness = 2
+Lighting.Ambient = Color3.fromRGB(140, 140, 140)
+Lighting.OutdoorAmbient = Color3.fromRGB(140, 140, 140)
 Lighting.FogEnd = 10000
-Lighting.FogColor = Color3.fromRGB(5, 5, 15)
+Lighting.FogColor = Color3.fromRGB(180, 200, 220)
 Lighting.GlobalShadows = true
+Lighting.EnvironmentDiffuseScale = 1
+Lighting.EnvironmentSpecularScale = 1
 
 -- Remove existing sky/atmosphere
 for _, child in ipairs(Lighting:GetChildren()) do
-	if child:IsA("Sky") or child:IsA("Atmosphere") or child:IsA("BloomEffect") then
+	if child:IsA("Sky") or child:IsA("Atmosphere") or child:IsA("BloomEffect") or child:IsA("ColorCorrectionEffect") then
 		child:Destroy()
 	end
 end
 
--- Space sky (black with stars)
+-- Bright daytime sky
 local sky = Instance.new("Sky")
-sky.StarCount = 3000
-sky.CelestialBodiesShown = false
-sky.SkyboxBk = ""
-sky.SkyboxDn = ""
-sky.SkyboxFt = ""
-sky.SkyboxLf = ""
-sky.SkyboxRt = ""
-sky.SkyboxUp = ""
+sky.StarCount = 0
+sky.CelestialBodiesShown = true
 sky.Parent = Lighting
 
--- Space atmosphere
+-- Atmosphere for depth and haze
 local atmosphere = Instance.new("Atmosphere")
 atmosphere.Density = 0.3
-atmosphere.Color = Color3.fromRGB(5, 5, 20)
-atmosphere.Decay = Color3.fromRGB(10, 5, 25)
-atmosphere.Glare = 0
-atmosphere.Haze = 0
-atmosphere.Offset = 0
+atmosphere.Color = Color3.fromRGB(199, 215, 232)
+atmosphere.Decay = Color3.fromRGB(92, 120, 160)
+atmosphere.Glare = 0.2
+atmosphere.Haze = 1
+atmosphere.Offset = 0.25
 atmosphere.Parent = Lighting
 
--- Bloom for glowing effects
+-- Subtle bloom
 local bloom = Instance.new("BloomEffect")
-bloom.Intensity = 0.5
-bloom.Size = 24
-bloom.Threshold = 1.5
+bloom.Intensity = 0.3
+bloom.Size = 30
+bloom.Threshold = 2
 bloom.Parent = Lighting
+
+-- Color correction for vibrant look
+local colorCorrection = Instance.new("ColorCorrectionEffect")
+colorCorrection.Brightness = 0.05
+colorCorrection.Contrast = 0.1
+colorCorrection.Saturation = 0.15
+colorCorrection.Parent = Lighting
 
 for _, name in ipairs(remoteNames) do
 	local remote = Instance.new("RemoteEvent")
@@ -110,161 +113,218 @@ function GameManager.CreateBase(player: Player): Vector3
 	local bsZ = GameConfig.BASE_SIZE.Z  -- 200
 
 	-- ============================
-	-- MAIN GROUND PLATFORM (grass)
+	-- MAIN GROUND PLATFORM (clean modern look)
 	-- ============================
 	local safeZone = Instance.new("Part")
 	safeZone.Name = "SafeZone_" .. userId
 	safeZone.Size = GameConfig.BASE_SIZE
 	safeZone.Position = basePosition
 	safeZone.Anchored = true
-	safeZone.Color = GameConfig.BASE_COLOR
+	safeZone.Color = Color3.fromRGB(85, 170, 75)
 	safeZone.Material = Enum.Material.Grass
 	safeZone.TopSurface = Enum.SurfaceType.Smooth
 	safeZone.Parent = workspace
 	table.insert(parts, safeZone)
 
+	-- Neon border ring around the base
+	local borderThickness = 1.5
+	local borderHeight = 0.5
+	local borderColor = Color3.fromRGB(0, 180, 255)
+	local borderParts = {
+		{size = Vector3.new(bsX + 3, borderHeight, borderThickness), offset = Vector3.new(0, 0.5, -bsZ/2)},
+		{size = Vector3.new(bsX + 3, borderHeight, borderThickness), offset = Vector3.new(0, 0.5, bsZ/2)},
+		{size = Vector3.new(borderThickness, borderHeight, bsZ), offset = Vector3.new(-bsX/2, 0.5, 0)},
+		{size = Vector3.new(borderThickness, borderHeight, bsZ), offset = Vector3.new(bsX/2, 0.5, 0)},
+	}
+	for i, bp in ipairs(borderParts) do
+		local border = Instance.new("Part")
+		border.Name = "Border_" .. userId .. "_" .. i
+		border.Size = bp.size
+		border.Position = basePosition + bp.offset
+		border.Anchored = true
+		border.Color = borderColor
+		border.Material = Enum.Material.Neon
+		border.Parent = workspace
+		table.insert(parts, border)
+	end
+
 	-- ============================
-	-- STONE PATH (center walkway leading to abyss)
+	-- CENTER WALKWAY (clean path leading to abyss)
 	-- ============================
-	local pathWidth = 12
+	local pathWidth = 14
 	local pathLength = bsZ
 	local path = Instance.new("Part")
 	path.Name = "Path_" .. userId
-	path.Size = Vector3.new(pathWidth, 0.15, pathLength)
+	path.Size = Vector3.new(pathWidth, 0.2, pathLength)
 	path.Position = basePosition + Vector3.new(0, 0.55, 0)
 	path.Anchored = true
-	path.Color = Color3.fromRGB(180, 170, 150)
-	path.Material = Enum.Material.Cobblestone
+	path.Color = Color3.fromRGB(200, 200, 200)
+	path.Material = Enum.Material.Marble
 	path.Parent = workspace
 	table.insert(parts, path)
 
-	-- Side paths to treadmill area and brainrot display area
-	local sidePath1 = Instance.new("Part")
-	sidePath1.Name = "SidePath1_" .. userId
-	sidePath1.Size = Vector3.new(60, 0.15, 8)
-	sidePath1.Position = basePosition + Vector3.new(-35, 0.55, -20)
-	sidePath1.Anchored = true
-	sidePath1.Color = Color3.fromRGB(180, 170, 150)
-	sidePath1.Material = Enum.Material.Cobblestone
-	sidePath1.Parent = workspace
-	table.insert(parts, sidePath1)
+	-- Path neon center stripe
+	local centerStripe = Instance.new("Part")
+	centerStripe.Name = "PathStripe_" .. userId
+	centerStripe.Size = Vector3.new(1, 0.1, pathLength)
+	centerStripe.Position = basePosition + Vector3.new(0, 0.7, 0)
+	centerStripe.Anchored = true
+	centerStripe.CanCollide = false
+	centerStripe.Color = Color3.fromRGB(0, 200, 255)
+	centerStripe.Material = Enum.Material.Neon
+	centerStripe.Parent = workspace
+	table.insert(parts, centerStripe)
 
-	local sidePath2 = Instance.new("Part")
-	sidePath2.Name = "SidePath2_" .. userId
-	sidePath2.Size = Vector3.new(60, 0.15, 8)
-	sidePath2.Position = basePosition + Vector3.new(35, 0.55, -20)
-	sidePath2.Anchored = true
-	sidePath2.Color = Color3.fromRGB(180, 170, 150)
-	sidePath2.Material = Enum.Material.Cobblestone
-	sidePath2.Parent = workspace
-	table.insert(parts, sidePath2)
-
-	-- ============================
-	-- PERIMETER WALLS (wooden fence)
-	-- ============================
-	local wallHeight = 6
-	local wallThickness = 2
-
-	-- Left wall
-	local wallLeft = Instance.new("Part")
-	wallLeft.Name = "WallLeft_" .. userId
-	wallLeft.Size = Vector3.new(wallThickness, wallHeight, bsZ)
-	wallLeft.Position = basePosition + Vector3.new(-bsX/2, wallHeight/2, 0)
-	wallLeft.Anchored = true
-	wallLeft.Color = Color3.fromRGB(139, 90, 43)
-	wallLeft.Material = Enum.Material.WoodPlanks
-	wallLeft.Parent = workspace
-	table.insert(parts, wallLeft)
-
-	-- Right wall
-	local wallRight = Instance.new("Part")
-	wallRight.Name = "WallRight_" .. userId
-	wallRight.Size = Vector3.new(wallThickness, wallHeight, bsZ)
-	wallRight.Position = basePosition + Vector3.new(bsX/2, wallHeight/2, 0)
-	wallRight.Anchored = true
-	wallRight.Color = Color3.fromRGB(139, 90, 43)
-	wallRight.Material = Enum.Material.WoodPlanks
-	wallRight.Parent = workspace
-	table.insert(parts, wallRight)
-
-	-- Back wall
-	local wallBack = Instance.new("Part")
-	wallBack.Name = "WallBack_" .. userId
-	wallBack.Size = Vector3.new(bsX, wallHeight, wallThickness)
-	wallBack.Position = basePosition + Vector3.new(0, wallHeight/2, -bsZ/2)
-	wallBack.Anchored = true
-	wallBack.Color = Color3.fromRGB(139, 90, 43)
-	wallBack.Material = Enum.Material.WoodPlanks
-	wallBack.Parent = workspace
-	table.insert(parts, wallBack)
+	-- Side paths to treadmill and display areas
+	for _, sideInfo in ipairs({
+		{offset = Vector3.new(-35, 0.55, -20)},
+		{offset = Vector3.new(35, 0.55, -20)},
+	}) do
+		local sidePath = Instance.new("Part")
+		sidePath.Name = "SidePath_" .. userId
+		sidePath.Size = Vector3.new(60, 0.2, 10)
+		sidePath.Position = basePosition + sideInfo.offset
+		sidePath.Anchored = true
+		sidePath.Color = Color3.fromRGB(200, 200, 200)
+		sidePath.Material = Enum.Material.Marble
+		sidePath.Parent = workspace
+		table.insert(parts, sidePath)
+	end
 
 	-- ============================
-	-- CORNER TOWERS
+	-- PERIMETER WALLS (clean modern walls)
 	-- ============================
-	local towerPositions = {
+	local wallHeight = 5
+	local wallThickness = 1.5
+
+	for _, wallInfo in ipairs({
+		{name = "WallLeft", size = Vector3.new(wallThickness, wallHeight, bsZ), offset = Vector3.new(-bsX/2, wallHeight/2, 0)},
+		{name = "WallRight", size = Vector3.new(wallThickness, wallHeight, bsZ), offset = Vector3.new(bsX/2, wallHeight/2, 0)},
+		{name = "WallBack", size = Vector3.new(bsX, wallHeight, wallThickness), offset = Vector3.new(0, wallHeight/2, -bsZ/2)},
+	}) do
+		local wall = Instance.new("Part")
+		wall.Name = wallInfo.name .. "_" .. userId
+		wall.Size = wallInfo.size
+		wall.Position = basePosition + wallInfo.offset
+		wall.Anchored = true
+		wall.Color = Color3.fromRGB(220, 220, 230)
+		wall.Material = Enum.Material.SmoothPlastic
+		wall.Transparency = 0.3
+		wall.Parent = workspace
+		table.insert(parts, wall)
+
+		-- Neon strip on top of wall
+		local strip = Instance.new("Part")
+		strip.Name = wallInfo.name .. "Strip_" .. userId
+		strip.Size = Vector3.new(wallInfo.size.X, 0.3, wallInfo.size.Z)
+		strip.Position = basePosition + wallInfo.offset + Vector3.new(0, wallHeight/2 + 0.15, 0)
+		strip.Anchored = true
+		strip.CanCollide = false
+		strip.Color = Color3.fromRGB(0, 180, 255)
+		strip.Material = Enum.Material.Neon
+		strip.Parent = workspace
+		table.insert(parts, strip)
+	end
+
+	-- ============================
+	-- CORNER PILLARS (modern glowing pillars)
+	-- ============================
+	local pillarPositions = {
 		Vector3.new(-bsX/2, 0, -bsZ/2),
 		Vector3.new(bsX/2, 0, -bsZ/2),
 		Vector3.new(-bsX/2, 0, bsZ/2),
 		Vector3.new(bsX/2, 0, bsZ/2),
 	}
-	for i, offset in ipairs(towerPositions) do
-		local tower = Instance.new("Part")
-		tower.Name = "Tower_" .. userId .. "_" .. i
-		tower.Size = Vector3.new(5, 12, 5)
-		tower.Position = basePosition + offset + Vector3.new(0, 6, 0)
-		tower.Anchored = true
-		tower.Color = Color3.fromRGB(100, 65, 30)
-		tower.Material = Enum.Material.Wood
-		tower.Parent = workspace
-		table.insert(parts, tower)
+	for i, offset in ipairs(pillarPositions) do
+		local pillar = Instance.new("Part")
+		pillar.Name = "Pillar_" .. userId .. "_" .. i
+		pillar.Size = Vector3.new(4, 10, 4)
+		pillar.Position = basePosition + offset + Vector3.new(0, 5, 0)
+		pillar.Anchored = true
+		pillar.Color = Color3.fromRGB(240, 240, 250)
+		pillar.Material = Enum.Material.SmoothPlastic
+		pillar.Parent = workspace
+		table.insert(parts, pillar)
 
-		-- Tower top
-		local towerTop = Instance.new("Part")
-		towerTop.Name = "TowerTop_" .. userId .. "_" .. i
-		towerTop.Size = Vector3.new(7, 1, 7)
-		towerTop.Position = basePosition + offset + Vector3.new(0, 12.5, 0)
-		towerTop.Anchored = true
-		towerTop.Color = Color3.fromRGB(180, 50, 50)
-		towerTop.Material = Enum.Material.SmoothPlastic
-		towerTop.Parent = workspace
-		table.insert(parts, towerTop)
+		-- Glowing top cap
+		local cap = Instance.new("Part")
+		cap.Name = "PillarCap_" .. userId .. "_" .. i
+		cap.Size = Vector3.new(5, 1.5, 5)
+		cap.Position = basePosition + offset + Vector3.new(0, 10.75, 0)
+		cap.Anchored = true
+		cap.Color = Color3.fromRGB(0, 180, 255)
+		cap.Material = Enum.Material.Neon
+		cap.Parent = workspace
+		table.insert(parts, cap)
+
+		local pillarLight = Instance.new("PointLight")
+		pillarLight.Color = Color3.fromRGB(0, 180, 255)
+		pillarLight.Range = 25
+		pillarLight.Brightness = 0.5
+		pillarLight.Parent = cap
 	end
 
 	-- ============================
-	-- ENTRANCE ARCH (at the abyss side)
+	-- ENTRANCE ARCH (modern neon portal)
 	-- ============================
 	local archZ = basePosition.Z + bsZ/2
 	local archLeft = Instance.new("Part")
 	archLeft.Name = "ArchLeft_" .. userId
-	archLeft.Size = Vector3.new(4, 14, 4)
-	archLeft.Position = Vector3.new(basePosition.X - 10, basePosition.Y + 7, archZ)
+	archLeft.Size = Vector3.new(3, 16, 3)
+	archLeft.Position = Vector3.new(basePosition.X - 10, basePosition.Y + 8, archZ)
 	archLeft.Anchored = true
-	archLeft.Color = Color3.fromRGB(100, 100, 110)
-	archLeft.Material = Enum.Material.Brick
+	archLeft.Color = Color3.fromRGB(240, 240, 250)
+	archLeft.Material = Enum.Material.SmoothPlastic
 	archLeft.Parent = workspace
 	table.insert(parts, archLeft)
 
 	local archRight = Instance.new("Part")
 	archRight.Name = "ArchRight_" .. userId
-	archRight.Size = Vector3.new(4, 14, 4)
-	archRight.Position = Vector3.new(basePosition.X + 10, basePosition.Y + 7, archZ)
+	archRight.Size = Vector3.new(3, 16, 3)
+	archRight.Position = Vector3.new(basePosition.X + 10, basePosition.Y + 8, archZ)
 	archRight.Anchored = true
-	archRight.Color = Color3.fromRGB(100, 100, 110)
-	archRight.Material = Enum.Material.Brick
+	archRight.Color = Color3.fromRGB(240, 240, 250)
+	archRight.Material = Enum.Material.SmoothPlastic
 	archRight.Parent = workspace
 	table.insert(parts, archRight)
 
 	local archTop = Instance.new("Part")
 	archTop.Name = "ArchTop_" .. userId
-	archTop.Size = Vector3.new(24, 3, 4)
-	archTop.Position = Vector3.new(basePosition.X, basePosition.Y + 15, archZ)
+	archTop.Size = Vector3.new(24, 2, 3)
+	archTop.Position = Vector3.new(basePosition.X, basePosition.Y + 17, archZ)
 	archTop.Anchored = true
-	archTop.Color = Color3.fromRGB(100, 100, 110)
-	archTop.Material = Enum.Material.Brick
+	archTop.Color = Color3.fromRGB(240, 240, 250)
+	archTop.Material = Enum.Material.SmoothPlastic
 	archTop.Parent = workspace
 	table.insert(parts, archTop)
 
-	-- Arch sign: "DANGER ZONE - ABYSS AHEAD!"
+	-- Neon strips on arch columns
+	for _, archPillar in ipairs({archLeft, archRight}) do
+		local neonStrip = Instance.new("Part")
+		neonStrip.Name = "ArchNeon_" .. userId
+		neonStrip.Size = Vector3.new(0.5, 16, 0.5)
+		neonStrip.Position = archPillar.Position + Vector3.new(0, 0, 1.5)
+		neonStrip.Anchored = true
+		neonStrip.CanCollide = false
+		neonStrip.Color = Color3.fromRGB(255, 60, 60)
+		neonStrip.Material = Enum.Material.Neon
+		neonStrip.Parent = workspace
+		table.insert(parts, neonStrip)
+	end
+
+	-- Neon strip on arch top
+	local archTopNeon = Instance.new("Part")
+	archTopNeon.Name = "ArchTopNeon_" .. userId
+	archTopNeon.Size = Vector3.new(24, 0.5, 0.5)
+	archTopNeon.Position = Vector3.new(basePosition.X, basePosition.Y + 18.2, archZ + 1.5)
+	archTopNeon.Anchored = true
+	archTopNeon.CanCollide = false
+	archTopNeon.Color = Color3.fromRGB(255, 60, 60)
+	archTopNeon.Material = Enum.Material.Neon
+	archTopNeon.Parent = workspace
+	table.insert(parts, archTopNeon)
+
+	-- Arch sign
 	local signGui = Instance.new("BillboardGui")
 	signGui.Size = UDim2.new(0, 400, 0, 80)
 	signGui.StudsOffset = Vector3.new(0, 2, 0)
@@ -275,37 +335,44 @@ function GameManager.CreateBase(player: Player): Vector3
 	local signLabel = Instance.new("TextLabel")
 	signLabel.Size = UDim2.new(1, 0, 1, 0)
 	signLabel.BackgroundTransparency = 1
-	signLabel.Text = "DANGER ZONE - ABYSS AHEAD!"
-	signLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+	signLabel.Text = "ABYSS COURSE"
+	signLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
 	signLabel.TextScaled = true
 	signLabel.Font = Enum.Font.GothamBold
 	signLabel.Parent = signGui
 
 	-- ============================
-	-- TREES (decorative)
+	-- TREES (decorative, varied sizes)
 	-- ============================
 	local treeOffsets = {
-		Vector3.new(-70, 0, -60),
-		Vector3.new(-80, 0, -30),
-		Vector3.new(-65, 0, 20),
-		Vector3.new(-75, 0, 50),
-		Vector3.new(70, 0, -60),
-		Vector3.new(80, 0, -30),
-		Vector3.new(65, 0, 20),
-		Vector3.new(75, 0, 50),
-		Vector3.new(-40, 0, -80),
-		Vector3.new(40, 0, -80),
-		Vector3.new(-50, 0, 70),
-		Vector3.new(50, 0, 70),
+		{offset = Vector3.new(-70, 0, -60), scale = 1.0},
+		{offset = Vector3.new(-80, 0, -30), scale = 0.8},
+		{offset = Vector3.new(-65, 0, 20), scale = 1.2},
+		{offset = Vector3.new(-75, 0, 50), scale = 0.9},
+		{offset = Vector3.new(70, 0, -60), scale = 1.1},
+		{offset = Vector3.new(80, 0, -30), scale = 0.7},
+		{offset = Vector3.new(65, 0, 20), scale = 1.0},
+		{offset = Vector3.new(75, 0, 50), scale = 1.3},
+		{offset = Vector3.new(-40, 0, -80), scale = 0.9},
+		{offset = Vector3.new(40, 0, -80), scale = 1.0},
+		{offset = Vector3.new(-50, 0, 70), scale = 1.1},
+		{offset = Vector3.new(50, 0, 70), scale = 0.8},
 	}
-	for i, offset in ipairs(treeOffsets) do
+	local treeColors = {
+		Color3.fromRGB(40, 160, 50),
+		Color3.fromRGB(50, 180, 60),
+		Color3.fromRGB(35, 140, 45),
+		Color3.fromRGB(60, 170, 55),
+	}
+	for i, treeInfo in ipairs(treeOffsets) do
+		local s = treeInfo.scale
 		-- Trunk
 		local trunk = Instance.new("Part")
 		trunk.Name = "TreeTrunk_" .. userId .. "_" .. i
-		trunk.Size = Vector3.new(3, 10, 3)
-		trunk.Position = basePosition + offset + Vector3.new(0, 5.5, 0)
+		trunk.Size = Vector3.new(2.5 * s, 10 * s, 2.5 * s)
+		trunk.Position = basePosition + treeInfo.offset + Vector3.new(0, 5.5 * s, 0)
 		trunk.Anchored = true
-		trunk.Color = Color3.fromRGB(101, 67, 33)
+		trunk.Color = Color3.fromRGB(90, 60, 30)
 		trunk.Material = Enum.Material.Wood
 		trunk.Shape = Enum.PartType.Cylinder
 		trunk.Orientation = Vector3.new(0, 0, 90)
@@ -315,10 +382,10 @@ function GameManager.CreateBase(player: Player): Vector3
 		-- Leaves
 		local leaves = Instance.new("Part")
 		leaves.Name = "TreeLeaves_" .. userId .. "_" .. i
-		leaves.Size = Vector3.new(10, 8, 10)
-		leaves.Position = basePosition + offset + Vector3.new(0, 13, 0)
+		leaves.Size = Vector3.new(10 * s, 9 * s, 10 * s)
+		leaves.Position = basePosition + treeInfo.offset + Vector3.new(0, 12 * s, 0)
 		leaves.Anchored = true
-		leaves.Color = Color3.fromRGB(50, 140, 50)
+		leaves.Color = treeColors[(i % #treeColors) + 1]
 		leaves.Material = Enum.Material.Grass
 		leaves.Shape = Enum.PartType.Ball
 		leaves.Parent = workspace
@@ -326,20 +393,40 @@ function GameManager.CreateBase(player: Player): Vector3
 	end
 
 	-- ============================
-	-- TREADMILL AREA (left side - on a raised platform)
+	-- TREADMILL AREA (left side - raised platform with modern look)
 	-- ============================
 	local treadmillAreaPos = basePosition + Vector3.new(-55, 0, -20)
 
 	-- Raised platform
 	local treadmillPlatform = Instance.new("Part")
 	treadmillPlatform.Name = "TreadmillPlatform_" .. userId
-	treadmillPlatform.Size = Vector3.new(50, 1.5, 40)
-	treadmillPlatform.Position = treadmillAreaPos + Vector3.new(0, 0.75, 0)
+	treadmillPlatform.Size = Vector3.new(50, 2, 40)
+	treadmillPlatform.Position = treadmillAreaPos + Vector3.new(0, 1, 0)
 	treadmillPlatform.Anchored = true
-	treadmillPlatform.Color = Color3.fromRGB(160, 160, 160)
-	treadmillPlatform.Material = Enum.Material.Concrete
+	treadmillPlatform.Color = Color3.fromRGB(200, 200, 210)
+	treadmillPlatform.Material = Enum.Material.Marble
 	treadmillPlatform.Parent = workspace
 	table.insert(parts, treadmillPlatform)
+
+	-- Neon border around treadmill platform
+	local tmBorderColor = Color3.fromRGB(0, 150, 255)
+	for _, bi in ipairs({
+		{size = Vector3.new(50, 0.3, 0.5), offset = Vector3.new(0, 2.15, -20)},
+		{size = Vector3.new(50, 0.3, 0.5), offset = Vector3.new(0, 2.15, 20)},
+		{size = Vector3.new(0.5, 0.3, 40), offset = Vector3.new(-25, 2.15, 0)},
+		{size = Vector3.new(0.5, 0.3, 40), offset = Vector3.new(25, 2.15, 0)},
+	}) do
+		local tmBorder = Instance.new("Part")
+		tmBorder.Name = "TMBorder_" .. userId
+		tmBorder.Size = bi.size
+		tmBorder.Position = treadmillAreaPos + bi.offset
+		tmBorder.Anchored = true
+		tmBorder.CanCollide = false
+		tmBorder.Color = tmBorderColor
+		tmBorder.Material = Enum.Material.Neon
+		tmBorder.Parent = workspace
+		table.insert(parts, tmBorder)
+	end
 
 	-- Treadmill
 	local treadmillPosition = treadmillAreaPos + Vector3.new(0, 1.5, 0)
@@ -414,13 +501,23 @@ function GameManager.CreateBase(player: Player): Vector3
 	treadmillLabel.Font = Enum.Font.GothamBold
 	treadmillLabel.Parent = treadmillGui
 
-	-- "GYM" sign above treadmill area
+	-- "GYM" sign with modern backing panel
+	local gymSignBacking = Instance.new("Part")
+	gymSignBacking.Name = "GymSignBack_" .. userId
+	gymSignBacking.Size = Vector3.new(22, 5, 1)
+	gymSignBacking.Position = treadmillAreaPos + Vector3.new(0, 10, -18)
+	gymSignBacking.Anchored = true
+	gymSignBacking.Color = Color3.fromRGB(30, 30, 40)
+	gymSignBacking.Material = Enum.Material.SmoothPlastic
+	gymSignBacking.Parent = workspace
+	table.insert(parts, gymSignBacking)
+
 	local gymSign = Instance.new("Part")
 	gymSign.Name = "GymSign_" .. userId
-	gymSign.Size = Vector3.new(20, 4, 1)
-	gymSign.Position = treadmillAreaPos + Vector3.new(0, 10, -18)
+	gymSign.Size = Vector3.new(20, 3.5, 0.5)
+	gymSign.Position = treadmillAreaPos + Vector3.new(0, 10, -17.5)
 	gymSign.Anchored = true
-	gymSign.Color = Color3.fromRGB(0, 120, 255)
+	gymSign.Color = Color3.fromRGB(0, 150, 255)
 	gymSign.Material = Enum.Material.Neon
 	gymSign.Parent = workspace
 	table.insert(parts, gymSign)
@@ -441,35 +538,65 @@ function GameManager.CreateBase(player: Player): Vector3
 	gymSignLabel.Parent = gymSignGui
 
 	-- ============================
-	-- BRAINROT DISPLAY AREA (right side - on a raised platform)
+	-- BRAINROT DISPLAY AREA (right side - showcase stage)
 	-- ============================
 	local displayAreaPos = basePosition + Vector3.new(55, 0, -20)
 
 	local displayPlatform = Instance.new("Part")
 	displayPlatform.Name = "DisplayPlatform_" .. userId
-	displayPlatform.Size = Vector3.new(60, 1.5, 50)
-	displayPlatform.Position = displayAreaPos + Vector3.new(0, 0.75, 0)
+	displayPlatform.Size = Vector3.new(60, 2, 50)
+	displayPlatform.Position = displayAreaPos + Vector3.new(0, 1, 0)
 	displayPlatform.Anchored = true
-	displayPlatform.Color = Color3.fromRGB(60, 60, 80)
-	displayPlatform.Material = Enum.Material.SmoothPlastic
+	displayPlatform.Color = Color3.fromRGB(50, 50, 65)
+	displayPlatform.Material = Enum.Material.Marble
 	displayPlatform.Parent = workspace
 	table.insert(parts, displayPlatform)
 
 	local displayFloor = Instance.new("Part")
 	displayFloor.Name = "BrainrotDisplay_" .. userId
 	displayFloor.Size = Vector3.new(58, 0.2, 48)
-	displayFloor.Position = displayAreaPos + Vector3.new(0, 1.6, 0)
+	displayFloor.Position = displayAreaPos + Vector3.new(0, 2.15, 0)
 	displayFloor.Anchored = true
-	displayFloor.Color = Color3.fromRGB(50, 50, 70)
+	displayFloor.Color = Color3.fromRGB(40, 40, 55)
 	displayFloor.Material = Enum.Material.SmoothPlastic
 	displayFloor.Parent = workspace
 	table.insert(parts, displayFloor)
 
-	-- "MY BRAINROTS" sign
+	-- Neon border around display platform
+	local dpBorderColor = Color3.fromRGB(180, 50, 255)
+	for _, bi in ipairs({
+		{size = Vector3.new(60, 0.3, 0.5), offset = Vector3.new(0, 2.15, -25)},
+		{size = Vector3.new(60, 0.3, 0.5), offset = Vector3.new(0, 2.15, 25)},
+		{size = Vector3.new(0.5, 0.3, 50), offset = Vector3.new(-30, 2.15, 0)},
+		{size = Vector3.new(0.5, 0.3, 50), offset = Vector3.new(30, 2.15, 0)},
+	}) do
+		local dpBorder = Instance.new("Part")
+		dpBorder.Name = "DPBorder_" .. userId
+		dpBorder.Size = bi.size
+		dpBorder.Position = displayAreaPos + bi.offset
+		dpBorder.Anchored = true
+		dpBorder.CanCollide = false
+		dpBorder.Color = dpBorderColor
+		dpBorder.Material = Enum.Material.Neon
+		dpBorder.Parent = workspace
+		table.insert(parts, dpBorder)
+	end
+
+	-- "MY BRAINROTS" sign with backing panel
+	local brSignBacking = Instance.new("Part")
+	brSignBacking.Name = "BrainrotSignBack_" .. userId
+	brSignBacking.Size = Vector3.new(26, 5, 1)
+	brSignBacking.Position = displayAreaPos + Vector3.new(0, 10, -23)
+	brSignBacking.Anchored = true
+	brSignBacking.Color = Color3.fromRGB(30, 30, 40)
+	brSignBacking.Material = Enum.Material.SmoothPlastic
+	brSignBacking.Parent = workspace
+	table.insert(parts, brSignBacking)
+
 	local brSign = Instance.new("Part")
 	brSign.Name = "BrainrotSign_" .. userId
-	brSign.Size = Vector3.new(24, 4, 1)
-	brSign.Position = displayAreaPos + Vector3.new(0, 10, -23)
+	brSign.Size = Vector3.new(24, 3.5, 0.5)
+	brSign.Position = displayAreaPos + Vector3.new(0, 10, -22.5)
 	brSign.Anchored = true
 	brSign.Color = Color3.fromRGB(180, 50, 255)
 	brSign.Material = Enum.Material.Neon
@@ -492,12 +619,23 @@ function GameManager.CreateBase(player: Player): Vector3
 	brSignLabel.Parent = brSignGui
 
 	-- ============================
-	-- PLAYER NAME SIGN (center-back of base)
+	-- PLAYER NAME SIGN (modern floating sign at center-back)
 	-- ============================
+	local nameSignBacking = Instance.new("Part")
+	nameSignBacking.Name = "NameSignBack_" .. userId
+	nameSignBacking.Size = Vector3.new(35, 8, 2)
+	nameSignBacking.Position = basePosition + Vector3.new(0, 12, -bsZ/2 + 5)
+	nameSignBacking.Anchored = true
+	nameSignBacking.Color = Color3.fromRGB(30, 30, 40)
+	nameSignBacking.Material = Enum.Material.SmoothPlastic
+	nameSignBacking.Parent = workspace
+	table.insert(parts, nameSignBacking)
+	createCorner(nameSignBacking, 4)
+
 	local nameSign = Instance.new("Part")
 	nameSign.Name = "NameSign_" .. userId
-	nameSign.Size = Vector3.new(30, 6, 2)
-	nameSign.Position = basePosition + Vector3.new(0, 10, -bsZ/2 + 5)
+	nameSign.Size = Vector3.new(33, 6, 1)
+	nameSign.Position = basePosition + Vector3.new(0, 12, -bsZ/2 + 5.5)
 	nameSign.Anchored = true
 	nameSign.Color = Color3.fromRGB(255, 200, 50)
 	nameSign.Material = Enum.Material.Neon
@@ -520,47 +658,42 @@ function GameManager.CreateBase(player: Player): Vector3
 	nameLabel.Parent = nameGui
 
 	-- ============================
-	-- DECORATIVE LIGHTS (around the base)
+	-- MODERN LAMP POSTS (around the base)
 	-- ============================
-	local lightColors = {
-		Color3.fromRGB(255, 200, 50),
-		Color3.fromRGB(0, 200, 255),
-		Color3.fromRGB(255, 100, 100),
-		Color3.fromRGB(100, 255, 100),
-	}
-	local lightOffsets = {
+	local lampOffsets = {
 		Vector3.new(-30, 0, 60),
 		Vector3.new(30, 0, 60),
 		Vector3.new(-30, 0, -60),
 		Vector3.new(30, 0, -60),
+		Vector3.new(-60, 0, 0),
+		Vector3.new(60, 0, 0),
 	}
-	for i, offset in ipairs(lightOffsets) do
+	for i, offset in ipairs(lampOffsets) do
 		local pole = Instance.new("Part")
-		pole.Name = "LightPole_" .. userId .. "_" .. i
-		pole.Size = Vector3.new(1, 10, 1)
-		pole.Position = basePosition + offset + Vector3.new(0, 5.5, 0)
+		pole.Name = "LampPole_" .. userId .. "_" .. i
+		pole.Size = Vector3.new(0.8, 12, 0.8)
+		pole.Position = basePosition + offset + Vector3.new(0, 6.5, 0)
 		pole.Anchored = true
-		pole.Color = Color3.fromRGB(80, 80, 80)
-		pole.Material = Enum.Material.Metal
+		pole.Color = Color3.fromRGB(200, 200, 210)
+		pole.Material = Enum.Material.SmoothPlastic
 		pole.Parent = workspace
 		table.insert(parts, pole)
 
-		local lamp = Instance.new("Part")
-		lamp.Name = "Lamp_" .. userId .. "_" .. i
-		lamp.Size = Vector3.new(3, 3, 3)
-		lamp.Shape = Enum.PartType.Ball
-		lamp.Position = basePosition + offset + Vector3.new(0, 12, 0)
-		lamp.Anchored = true
-		lamp.Color = lightColors[i]
-		lamp.Material = Enum.Material.Neon
-		lamp.Parent = workspace
-		table.insert(parts, lamp)
+		local lampHead = Instance.new("Part")
+		lampHead.Name = "LampHead_" .. userId .. "_" .. i
+		lampHead.Size = Vector3.new(2.5, 1, 2.5)
+		lampHead.Position = basePosition + offset + Vector3.new(0, 13, 0)
+		lampHead.Anchored = true
+		lampHead.Color = Color3.fromRGB(255, 240, 200)
+		lampHead.Material = Enum.Material.Neon
+		lampHead.Parent = workspace
+		table.insert(parts, lampHead)
 
 		local pointLight = Instance.new("PointLight")
-		pointLight.Color = lightColors[i]
-		pointLight.Range = 30
-		pointLight.Brightness = 1
-		pointLight.Parent = lamp
+		pointLight.Color = Color3.fromRGB(255, 240, 200)
+		pointLight.Range = 35
+		pointLight.Brightness = 0.8
+		pointLight.Parent = lampHead
 	end
 
 	-- ============================
@@ -661,42 +794,6 @@ function GameManager.CreateBase(player: Player): Vector3
 		end
 	end)
 
-	-- ============================
-	-- SPACE DUST PARTICLES (around the course area)
-	-- ============================
-	local spaceDust = Instance.new("Part")
-	spaceDust.Name = "SpaceDust_" .. userId
-	spaceDust.Size = Vector3.new(200, 80, 600)
-	spaceDust.Position = basePosition + Vector3.new(0, 40, 300)
-	spaceDust.Anchored = true
-	spaceDust.Transparency = 1
-	spaceDust.CanCollide = false
-	spaceDust.Parent = workspace
-	table.insert(parts, spaceDust)
-
-	local dustEmitter = Instance.new("ParticleEmitter")
-	dustEmitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 150, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 200, 255)),
-	})
-	dustEmitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.05),
-		NumberSequenceKeypoint.new(0.5, 0.15),
-		NumberSequenceKeypoint.new(1, 0.05),
-	})
-	dustEmitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.7),
-		NumberSequenceKeypoint.new(0.5, 0.3),
-		NumberSequenceKeypoint.new(1, 0.7),
-	})
-	dustEmitter.Lifetime = NumberRange.new(5, 12)
-	dustEmitter.Rate = 30
-	dustEmitter.Speed = NumberRange.new(0.5, 2)
-	dustEmitter.SpreadAngle = Vector2.new(180, 180)
-	dustEmitter.LightEmission = 1
-	dustEmitter.Parent = spaceDust
-
 	return basePosition
 end
 
@@ -727,7 +824,7 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 	local brainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotModels")
 
 	local index = 0
-	for brainrotName, count in pairs(data.collectedBrainrots) do
+	for brainrotName, count in pairs(data.placedBrainrots or {}) do
 		local brainrotInfo = BrainrotData.GetByName(brainrotName)
 		if brainrotInfo then
 			local row = math.floor(index / 6)

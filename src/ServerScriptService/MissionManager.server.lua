@@ -373,12 +373,12 @@ local function createBrainrotWithPrompt(name, pos, rarityColor, userId, brainrot
 				end
 			end
 
-			-- Carry on head
-			MissionManager.CarryBrainrotOnHead(triggerPlayer, pickupName, pickupColor)
+			-- Set carry data first, then add visual (CarryBrainrotOnHead adds .model to same table)
 			MissionManager.CarriedBrainrots[userId] = {
 				name = pickupName,
 				rarity = pickupRarity,
 			}
+			MissionManager.CarryBrainrotOnHead(triggerPlayer, pickupName, pickupColor)
 
 			-- Notify client
 			sendCarryUpdate(triggerPlayer, pickupName, pickupRarity)

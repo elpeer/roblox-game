@@ -1,34 +1,37 @@
 --[[
 	MissionManager - Handles continuous abyss course generation, jump detection,
-	brainrot collectibles at each stage, and carrying brainrots above the player's head.
+	brainrot collectibles with E-key pickup (ProximityPrompt), carry/drop mechanic,
+	lava visuals, and 100 continuous stages.
 
-	The course is now CONTINUOUS: after crossing one abyss, the next one follows immediately.
-	Brainrot character models appear on each landing platform for the player to collect.
-	When collected, the brainrot appears above the player's head (carried).
+	Flow:
+	1. Player crosses abyss -> brainrots spawn on landing platform
+	2. Player presses E to pick up (ProximityPrompt) -> brainrot on head
+	3. Red DROP button on client UI
+	4. Return to base gate -> brainrot added to inventory (collectedBrainrots)
+	5. At display area, press E -> place from inventory to stage (placedBrainrots) -> earns money
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Modules = ReplicatedStorage:WaitForChild("Modules")
 local GameConfig = require(Modules:WaitForChild("GameConfig"))
 local BrainrotData = require(Modules:WaitForChild("BrainrotData"))
 
 local MissionManager = {}
-MissionManager.PlayerAbyssParts = {} -- [userId] = { all parts }
-MissionManager.PlayerCourseState = {} -- [userId] = { currentZ, abyssNum, basePosition }
-MissionManager.CarriedBrainrots = {} -- [userId] = model
+MissionManager.PlayerAbyssParts = {}    -- [userId] = { all parts }
+MissionManager.PlayerCourseState = {}   -- [userId] = { basePosition, currentAbyssNum, stagesBuiltUpTo }
+MissionManager.CarriedBrainrots = {}    -- [userId] = { model = Model, name = string, rarity = string }
+MissionManager.SpawnedBrainrots = {}    -- [userId] = { Model, Model, ... } (brainrots on platforms)
 
 -- Number of abyss stages to render ahead
-local STAGES_AHEAD = 3
+local STAGES_AHEAD = 100
 
--- Folder for real brainrot models (created if missing)
+-- Folder for real brainrot models
 local brainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotModels")
 
 ------------------------------------------------------------
 -- Helper: Try to clone a real model from BrainrotModels folder
--- Returns a cloned model positioned at `pos`, or nil if not found
 ------------------------------------------------------------
 local function tryGetRealModel(name, pos, rarityColor, scale, userId)
 	if not brainrotModelsFolder then return nil end
@@ -38,7 +41,6 @@ local function tryGetRealModel(name, pos, rarityColor, scale, userId)
 	local model = template:Clone()
 	model.Name = "AbyssBrainrot_" .. userId
 
-	-- Find the primary part or first BasePart
 	local primaryPart = model.PrimaryPart
 	if not primaryPart then
 		for _, child in ipairs(model:GetDescendants()) do
@@ -51,7 +53,6 @@ local function tryGetRealModel(name, pos, rarityColor, scale, userId)
 	end
 	if not primaryPart then return nil end
 
-	-- Scale the model if needed (scale=1 means original size)
 	if scale and scale ~= 1 then
 		for _, part in ipairs(model:GetDescendants()) do
 			if part:IsA("BasePart") then
@@ -60,7 +61,6 @@ local function tryGetRealModel(name, pos, rarityColor, scale, userId)
 		end
 	end
 
-	-- Position the model
 	local offset = pos + Vector3.new(0, 2.5, 0) - primaryPart.Position
 	for _, part in ipairs(model:GetDescendants()) do
 		if part:IsA("BasePart") then
@@ -70,14 +70,12 @@ local function tryGetRealModel(name, pos, rarityColor, scale, userId)
 		end
 	end
 
-	-- Add glow
 	local glow = Instance.new("PointLight")
 	glow.Color = rarityColor
 	glow.Range = 12
 	glow.Brightness = 0.8
 	glow.Parent = primaryPart
 
-	-- Add name label
 	local nameGui = Instance.new("BillboardGui")
 	nameGui.Size = UDim2.new(0, 200, 0, 50)
 	nameGui.StudsOffset = Vector3.new(0, 4, 0)
@@ -99,7 +97,6 @@ end
 
 ------------------------------------------------------------
 -- Helper: Try to clone a real model as a mini carried version
--- Returns a model welded to the player's head, or nil if not found
 ------------------------------------------------------------
 local function tryGetRealCarryModel(name, head, rarityColor, userId)
 	if not brainrotModelsFolder then return nil end
@@ -109,7 +106,6 @@ local function tryGetRealCarryModel(name, head, rarityColor, userId)
 	local model = template:Clone()
 	model.Name = "CarriedBrainrot_" .. userId
 
-	-- Find the primary part
 	local primaryPart = model.PrimaryPart
 	if not primaryPart then
 		for _, child in ipairs(model:GetDescendants()) do
@@ -122,7 +118,6 @@ local function tryGetRealCarryModel(name, head, rarityColor, userId)
 	end
 	if not primaryPart then return nil end
 
-	-- Scale down to mini size (0.4x)
 	local miniScale = 0.4
 	for _, part in ipairs(model:GetDescendants()) do
 		if part:IsA("BasePart") then
@@ -132,7 +127,6 @@ local function tryGetRealCarryModel(name, head, rarityColor, userId)
 		end
 	end
 
-	-- Position above head
 	local targetPos = head.Position + Vector3.new(0, 3, 0)
 	local offset = targetPos - primaryPart.Position
 	for _, part in ipairs(model:GetDescendants()) do
@@ -141,7 +135,6 @@ local function tryGetRealCarryModel(name, head, rarityColor, userId)
 		end
 	end
 
-	-- Weld all parts to primary part
 	for _, part in ipairs(model:GetDescendants()) do
 		if part:IsA("BasePart") and part ~= primaryPart then
 			local weld = Instance.new("WeldConstraint")
@@ -151,20 +144,17 @@ local function tryGetRealCarryModel(name, head, rarityColor, userId)
 		end
 	end
 
-	-- Weld primary part to head
 	local headWeld = Instance.new("WeldConstraint")
 	headWeld.Part0 = head
 	headWeld.Part1 = primaryPart
 	headWeld.Parent = head
 
-	-- Add glow
 	local glow = Instance.new("PointLight")
 	glow.Color = rarityColor
 	glow.Range = 8
 	glow.Brightness = 0.6
 	glow.Parent = primaryPart
 
-	-- Add name label
 	local nameGui = Instance.new("BillboardGui")
 	nameGui.Size = UDim2.new(0, 150, 0, 30)
 	nameGui.StudsOffset = Vector3.new(0, 2, 0)
@@ -206,170 +196,201 @@ local function sendDataUpdate(player: Player)
 	end
 end
 
+local function sendCarryUpdate(player: Player, brainrotName, rarity)
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if remotes then
+		local carryEvent = remotes:FindFirstChild("CarryUpdate")
+		if carryEvent then
+			carryEvent:FireClient(player, brainrotName, rarity)
+		end
+	end
+end
+
 ------------------------------------------------------------
--- Helper: Create a brainrot character model at a position
--- Tries to use a real model from BrainrotModels folder first
+-- Helper: Create brainrot character model with ProximityPrompt
 ------------------------------------------------------------
-local function createBrainrotCharacterModel(name, pos, rarityColor, userId)
-	-- Try real model first
+local function createBrainrotWithPrompt(name, pos, rarityColor, userId, brainrotInfo)
+	local container
+
+	-- Try real model
 	local realModel = tryGetRealModel(name, pos, rarityColor, 1, userId)
 	if realModel then
-		return realModel
+		container = realModel
+	else
+		-- Fallback: dummy model
+		container = Instance.new("Model")
+		container.Name = "AbyssBrainrot_" .. userId
+
+		local body = Instance.new("Part")
+		body.Name = "Body"
+		body.Size = Vector3.new(2.5, 3, 1.5)
+		body.Position = pos + Vector3.new(0, 2.5, 0)
+		body.Anchored = true
+		body.CanCollide = false
+		body.Color = rarityColor
+		body.Material = Enum.Material.SmoothPlastic
+		body.Parent = container
+
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.Size = Vector3.new(2.2, 2.2, 2.2)
+		head.Shape = Enum.PartType.Ball
+		head.Position = pos + Vector3.new(0, 5.1, 0)
+		head.Anchored = true
+		head.CanCollide = false
+		head.Color = rarityColor
+		head.Material = Enum.Material.SmoothPlastic
+		head.Parent = container
+
+		local leftEye = Instance.new("Part")
+		leftEye.Size = Vector3.new(0.4, 0.5, 0.25)
+		leftEye.Position = pos + Vector3.new(-0.4, 5.3, 1.0)
+		leftEye.Anchored = true
+		leftEye.CanCollide = false
+		leftEye.Color = Color3.new(1, 1, 1)
+		leftEye.Material = Enum.Material.SmoothPlastic
+		leftEye.Parent = container
+
+		local rightEye = Instance.new("Part")
+		rightEye.Size = Vector3.new(0.4, 0.5, 0.25)
+		rightEye.Position = pos + Vector3.new(0.4, 5.3, 1.0)
+		rightEye.Anchored = true
+		rightEye.CanCollide = false
+		rightEye.Color = Color3.new(1, 1, 1)
+		rightEye.Material = Enum.Material.SmoothPlastic
+		rightEye.Parent = container
+
+		local leftArm = Instance.new("Part")
+		leftArm.Size = Vector3.new(0.9, 2.2, 0.9)
+		leftArm.Position = pos + Vector3.new(-1.7, 2.5, 0)
+		leftArm.Anchored = true
+		leftArm.CanCollide = false
+		leftArm.Color = rarityColor
+		leftArm.Material = Enum.Material.SmoothPlastic
+		leftArm.Parent = container
+
+		local rightArm = Instance.new("Part")
+		rightArm.Size = Vector3.new(0.9, 2.2, 0.9)
+		rightArm.Position = pos + Vector3.new(1.7, 2.5, 0)
+		rightArm.Anchored = true
+		rightArm.CanCollide = false
+		rightArm.Color = rarityColor
+		rightArm.Material = Enum.Material.SmoothPlastic
+		rightArm.Parent = container
+
+		local leftLeg = Instance.new("Part")
+		leftLeg.Size = Vector3.new(1, 2, 1)
+		leftLeg.Position = pos + Vector3.new(-0.6, 1, 0)
+		leftLeg.Anchored = true
+		leftLeg.CanCollide = false
+		leftLeg.Color = rarityColor
+		leftLeg.Material = Enum.Material.SmoothPlastic
+		leftLeg.Parent = container
+
+		local rightLeg = Instance.new("Part")
+		rightLeg.Size = Vector3.new(1, 2, 1)
+		rightLeg.Position = pos + Vector3.new(0.6, 1, 0)
+		rightLeg.Anchored = true
+		rightLeg.CanCollide = false
+		rightLeg.Color = rarityColor
+		rightLeg.Material = Enum.Material.SmoothPlastic
+		rightLeg.Parent = container
+
+		local glow = Instance.new("PointLight")
+		glow.Color = rarityColor
+		glow.Range = 12
+		glow.Brightness = 0.8
+		glow.Parent = body
+
+		local nameGui = Instance.new("BillboardGui")
+		nameGui.Size = UDim2.new(0, 200, 0, 50)
+		nameGui.StudsOffset = Vector3.new(0, 4, 0)
+		nameGui.Adornee = head
+		nameGui.AlwaysOnTop = true
+		nameGui.Parent = head
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(1, 0, 1, 0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = name
+		nameLabel.TextColor3 = rarityColor
+		nameLabel.TextScaled = true
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.Parent = nameGui
+
+		container.PrimaryPart = body
 	end
 
-	-- Fallback: build a dummy model from parts
-	local container = Instance.new("Model")
-	container.Name = "AbyssBrainrot_" .. userId
+	-- Add ProximityPrompt for E key pickup
+	local promptPart = container.PrimaryPart or container:FindFirstChildWhichIsA("BasePart")
+	if promptPart then
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Collect"
+		prompt.ObjectText = name
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 10
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = promptPart
 
-	-- Body
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = Vector3.new(2.5, 3, 1.5)
-	body.Position = pos + Vector3.new(0, 2.5, 0)
-	body.Anchored = true
-	body.CanCollide = false
-	body.Color = rarityColor
-	body.Material = Enum.Material.SmoothPlastic
-	body.Parent = container
+		-- Store brainrot info on the model for pickup
+		local infoValue = Instance.new("StringValue")
+		infoValue.Name = "BrainrotName"
+		infoValue.Value = name
+		infoValue.Parent = container
 
-	-- Head
-	local head = Instance.new("Part")
-	head.Name = "Head"
-	head.Size = Vector3.new(2.2, 2.2, 2.2)
-	head.Shape = Enum.PartType.Ball
-	head.Position = pos + Vector3.new(0, 5.1, 0)
-	head.Anchored = true
-	head.CanCollide = false
-	head.Color = rarityColor
-	head.Material = Enum.Material.SmoothPlastic
-	head.Parent = container
+		local rarityValue = Instance.new("StringValue")
+		rarityValue.Name = "BrainrotRarity"
+		rarityValue.Value = brainrotInfo.rarity
+		rarityValue.Parent = container
 
-	-- Eyes
-	local leftEye = Instance.new("Part")
-	leftEye.Name = "LeftEye"
-	leftEye.Size = Vector3.new(0.4, 0.5, 0.25)
-	leftEye.Position = pos + Vector3.new(-0.4, 5.3, 1.0)
-	leftEye.Anchored = true
-	leftEye.CanCollide = false
-	leftEye.Color = Color3.new(1, 1, 1)
-	leftEye.Material = Enum.Material.SmoothPlastic
-	leftEye.Parent = container
+		-- Handle pickup
+		prompt.Triggered:Connect(function(triggerPlayer)
+			if triggerPlayer.UserId ~= userId then return end
+			-- Can only carry one at a time
+			if MissionManager.CarriedBrainrots[userId] then return end
 
-	local leftPupil = Instance.new("Part")
-	leftPupil.Name = "LeftPupil"
-	leftPupil.Size = Vector3.new(0.2, 0.25, 0.1)
-	leftPupil.Position = pos + Vector3.new(-0.4, 5.3, 1.15)
-	leftPupil.Anchored = true
-	leftPupil.CanCollide = false
-	leftPupil.Color = Color3.new(0, 0, 0)
-	leftPupil.Material = Enum.Material.SmoothPlastic
-	leftPupil.Parent = container
+			-- Pick up brainrot
+			local bName = container:FindFirstChild("BrainrotName")
+			local bRarity = container:FindFirstChild("BrainrotRarity")
+			if not bName or not bRarity then return end
 
-	local rightEye = Instance.new("Part")
-	rightEye.Name = "RightEye"
-	rightEye.Size = Vector3.new(0.4, 0.5, 0.25)
-	rightEye.Position = pos + Vector3.new(0.4, 5.3, 1.0)
-	rightEye.Anchored = true
-	rightEye.CanCollide = false
-	rightEye.Color = Color3.new(1, 1, 1)
-	rightEye.Material = Enum.Material.SmoothPlastic
-	rightEye.Parent = container
+			local pickupName = bName.Value
+			local pickupRarity = bRarity.Value
+			local pickupColor = GameConfig.RARITY_COLORS[pickupRarity] or Color3.new(1, 1, 1)
 
-	local rightPupil = Instance.new("Part")
-	rightPupil.Name = "RightPupil"
-	rightPupil.Size = Vector3.new(0.2, 0.25, 0.1)
-	rightPupil.Position = pos + Vector3.new(0.4, 5.3, 1.15)
-	rightPupil.Anchored = true
-	rightPupil.CanCollide = false
-	rightPupil.Color = Color3.new(0, 0, 0)
-	rightPupil.Material = Enum.Material.SmoothPlastic
-	rightPupil.Parent = container
+			-- Remove from platform
+			container:Destroy()
 
-	-- Mouth (smile)
-	local mouth = Instance.new("Part")
-	mouth.Name = "Mouth"
-	mouth.Size = Vector3.new(0.6, 0.15, 0.1)
-	mouth.Position = pos + Vector3.new(0, 4.7, 1.05)
-	mouth.Anchored = true
-	mouth.CanCollide = false
-	mouth.Color = Color3.fromRGB(30, 30, 30)
-	mouth.Material = Enum.Material.SmoothPlastic
-	mouth.Parent = container
+			-- Remove from spawned list
+			local spawned = MissionManager.SpawnedBrainrots[userId]
+			if spawned then
+				for i, m in ipairs(spawned) do
+					if m == container then
+						table.remove(spawned, i)
+						break
+					end
+				end
+			end
 
-	-- Left arm
-	local leftArm = Instance.new("Part")
-	leftArm.Name = "LeftArm"
-	leftArm.Size = Vector3.new(0.9, 2.2, 0.9)
-	leftArm.Position = pos + Vector3.new(-1.7, 2.5, 0)
-	leftArm.Anchored = true
-	leftArm.CanCollide = false
-	leftArm.Color = rarityColor
-	leftArm.Material = Enum.Material.SmoothPlastic
-	leftArm.Parent = container
+			-- Carry on head
+			MissionManager.CarryBrainrotOnHead(triggerPlayer, pickupName, pickupColor)
+			MissionManager.CarriedBrainrots[userId] = {
+				name = pickupName,
+				rarity = pickupRarity,
+			}
 
-	-- Right arm
-	local rightArm = Instance.new("Part")
-	rightArm.Name = "RightArm"
-	rightArm.Size = Vector3.new(0.9, 2.2, 0.9)
-	rightArm.Position = pos + Vector3.new(1.7, 2.5, 0)
-	rightArm.Anchored = true
-	rightArm.CanCollide = false
-	rightArm.Color = rarityColor
-	rightArm.Material = Enum.Material.SmoothPlastic
-	rightArm.Parent = container
+			-- Notify client
+			sendCarryUpdate(triggerPlayer, pickupName, pickupRarity)
+		end)
+	end
 
-	-- Left leg
-	local leftLeg = Instance.new("Part")
-	leftLeg.Name = "LeftLeg"
-	leftLeg.Size = Vector3.new(1, 2, 1)
-	leftLeg.Position = pos + Vector3.new(-0.6, 1, 0)
-	leftLeg.Anchored = true
-	leftLeg.CanCollide = false
-	leftLeg.Color = rarityColor
-	leftLeg.Material = Enum.Material.SmoothPlastic
-	leftLeg.Parent = container
-
-	-- Right leg
-	local rightLeg = Instance.new("Part")
-	rightLeg.Name = "RightLeg"
-	rightLeg.Size = Vector3.new(1, 2, 1)
-	rightLeg.Position = pos + Vector3.new(0.6, 1, 0)
-	rightLeg.Anchored = true
-	rightLeg.CanCollide = false
-	rightLeg.Color = rarityColor
-	rightLeg.Material = Enum.Material.SmoothPlastic
-	rightLeg.Parent = container
-
-	-- Glow
-	local glow = Instance.new("PointLight")
-	glow.Color = rarityColor
-	glow.Range = 12
-	glow.Brightness = 0.8
-	glow.Parent = body
-
-	-- Name label
-	local nameGui = Instance.new("BillboardGui")
-	nameGui.Size = UDim2.new(0, 200, 0, 50)
-	nameGui.StudsOffset = Vector3.new(0, 4, 0)
-	nameGui.Adornee = head
-	nameGui.AlwaysOnTop = true
-	nameGui.Parent = head
-
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, 0, 1, 0)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Text = name
-	nameLabel.TextColor3 = rarityColor
-	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.Parent = nameGui
-
-	container.PrimaryPart = body
 	return container
 end
 
 ------------------------------------------------------------
--- Create a single abyss stage (platform + gap + landing + brainrots)
+-- Create a single abyss stage (platform + gap + landing + lava)
+-- NO brainrots pre-spawned (they spawn on completion)
 ------------------------------------------------------------
 local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, parts)
 	local abyssWidth = GameConfig.GetAbyssWidth(abyssNum)
@@ -391,7 +412,19 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 	startPlatform.Parent = workspace
 	table.insert(parts, startPlatform)
 
-	-- Abyss number sign on the start platform
+	-- Neon edge strips on platforms for visual effect
+	local edgeStrip = Instance.new("Part")
+	edgeStrip.Name = "Edge_" .. abyssNum
+	edgeStrip.Size = Vector3.new(GameConfig.PLATFORM_LENGTH, 0.3, 1)
+	edgeStrip.Position = startPlatform.Position + Vector3.new(0, 0.5, GameConfig.PLATFORM_WIDTH / 2)
+	edgeStrip.Anchored = true
+	edgeStrip.CanCollide = false
+	edgeStrip.Color = tierColor
+	edgeStrip.Material = Enum.Material.Neon
+	edgeStrip.Parent = workspace
+	table.insert(parts, edgeStrip)
+
+	-- Stage sign
 	local stageSign = Instance.new("BillboardGui")
 	stageSign.Name = "StageSign"
 	stageSign.Size = UDim2.new(0, 250, 0, 100)
@@ -403,33 +436,13 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 	local stageLabel = Instance.new("TextLabel")
 	stageLabel.Size = UDim2.new(1, 0, 1, 0)
 	stageLabel.BackgroundTransparency = 1
-	stageLabel.Text = "Abyss #" .. abyssNum .. "\n[" .. tierName .. "]\nJump Distance: " .. abyssWidth
+	stageLabel.Text = "Abyss #" .. abyssNum .. "\n[" .. tierName .. "]\nJump: " .. abyssWidth
 	stageLabel.TextColor3 = tierColor
 	stageLabel.TextScaled = true
 	stageLabel.Font = Enum.Font.GothamBold
 	stageLabel.Parent = stageSign
 
-	-- Brainrot characters on the start platform (collectible preview)
-	local brainrotCount = GameConfig.GetBrainrotRewardCount(abyssNum)
-	local brainrotsOnStage = {}
-	for i = 1, math.min(brainrotCount, 3) do
-		local brainrot = BrainrotData.GetRandomFromTier(tierName)
-		if brainrot then
-			local xOffset = (i - 2) * 6  -- spread across the platform
-			local brainrotPos = Vector3.new(
-				basePosition.X + xOffset,
-				basePosition.Y + 1,
-				startZ + GameConfig.PLATFORM_WIDTH / 2
-			)
-			local brainrotColor = GameConfig.RARITY_COLORS[brainrot.rarity] or Color3.new(1, 1, 1)
-			local brainrotModel = createBrainrotCharacterModel(brainrot.name, brainrotPos, brainrotColor, userId)
-			brainrotModel.Parent = workspace
-			table.insert(parts, brainrotModel)
-			table.insert(brainrotsOnStage, brainrot)
-		end
-	end
-
-	-- Landing platform (after the gap)
+	-- Landing platform
 	local landingZ = startZ + GameConfig.PLATFORM_WIDTH + abyssWidth
 	local landingPlatform = Instance.new("Part")
 	landingPlatform.Name = "LandingPlatform_" .. userId .. "_" .. abyssNum
@@ -445,14 +458,85 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 	landingPlatform.Parent = workspace
 	table.insert(parts, landingPlatform)
 
-	-- Kill zone below the gap
+	-- Landing neon edge
+	local landingEdge = Instance.new("Part")
+	landingEdge.Name = "LandingEdge_" .. abyssNum
+	landingEdge.Size = Vector3.new(GameConfig.PLATFORM_LENGTH, 0.3, 1)
+	landingEdge.Position = landingPlatform.Position + Vector3.new(0, 0.5, -GameConfig.PLATFORM_WIDTH / 2)
+	landingEdge.Anchored = true
+	landingEdge.CanCollide = false
+	landingEdge.Color = Color3.fromRGB(0, 255, 100)
+	landingEdge.Material = Enum.Material.Neon
+	landingEdge.Parent = workspace
+	table.insert(parts, landingEdge)
+
+	-- ============================
+	-- LAVA at bottom of abyss
+	-- ============================
+	local gapCenterZ = startZ + GameConfig.PLATFORM_WIDTH + abyssWidth / 2
+	local lavaGlow = Instance.new("Part")
+	lavaGlow.Name = "Lava_" .. userId .. "_" .. abyssNum
+	lavaGlow.Size = Vector3.new(GameConfig.PLATFORM_LENGTH + 10, 3, abyssWidth + 10)
+	lavaGlow.Position = Vector3.new(basePosition.X, GameConfig.KILL_ZONE_Y + 8, gapCenterZ)
+	lavaGlow.Anchored = true
+	lavaGlow.CanCollide = false
+	lavaGlow.Color = Color3.fromRGB(255, 80, 0)
+	lavaGlow.Material = Enum.Material.Neon
+	lavaGlow.Transparency = 0.2
+	lavaGlow.Parent = workspace
+	table.insert(parts, lavaGlow)
+
+	-- Lava surface layer
+	local lavaSurface = Instance.new("Part")
+	lavaSurface.Name = "LavaSurface_" .. abyssNum
+	lavaSurface.Size = Vector3.new(GameConfig.PLATFORM_LENGTH + 10, 1, abyssWidth + 10)
+	lavaSurface.Position = Vector3.new(basePosition.X, GameConfig.KILL_ZONE_Y + 10, gapCenterZ)
+	lavaSurface.Anchored = true
+	lavaSurface.CanCollide = false
+	lavaSurface.Color = Color3.fromRGB(255, 140, 0)
+	lavaSurface.Material = Enum.Material.Neon
+	lavaSurface.Transparency = 0.4
+	lavaSurface.Parent = workspace
+	table.insert(parts, lavaSurface)
+
+	-- Fire particles on lava
+	local fireEmitter = Instance.new("ParticleEmitter")
+	fireEmitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 50)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 100, 0)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 30, 0)),
+	})
+	fireEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2),
+		NumberSequenceKeypoint.new(0.5, 4),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	fireEmitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	fireEmitter.Lifetime = NumberRange.new(0.5, 2)
+	fireEmitter.Rate = 15
+	fireEmitter.Speed = NumberRange.new(3, 8)
+	fireEmitter.SpreadAngle = Vector2.new(20, 20)
+	fireEmitter.LightEmission = 1
+	fireEmitter.Parent = lavaSurface
+
+	-- Lava glow light
+	local lavaLight = Instance.new("PointLight")
+	lavaLight.Color = Color3.fromRGB(255, 100, 0)
+	lavaLight.Range = 50
+	lavaLight.Brightness = 1.5
+	lavaLight.Parent = lavaGlow
+
+	-- Kill zone (invisible, above lava)
 	local killZone = Instance.new("Part")
 	killZone.Name = "KillZone_" .. userId .. "_" .. abyssNum
 	killZone.Size = Vector3.new(GameConfig.PLATFORM_LENGTH + 40, 1, abyssWidth + 20)
 	killZone.Position = Vector3.new(
 		basePosition.X,
-		GameConfig.KILL_ZONE_Y,
-		startZ + GameConfig.PLATFORM_WIDTH + abyssWidth / 2
+		GameConfig.KILL_ZONE_Y + 15,
+		gapCenterZ
 	)
 	killZone.Anchored = true
 	killZone.Transparency = 1
@@ -460,7 +544,6 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 	killZone.Parent = workspace
 	table.insert(parts, killZone)
 
-	-- Kill zone: teleport back to start platform (not safe zone!)
 	killZone.Touched:Connect(function(hit)
 		local hitPlayer = Players:GetPlayerFromCharacter(hit.Parent)
 		if hitPlayer and hitPlayer.UserId == userId then
@@ -468,6 +551,10 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 			if character then
 				local hrp = character:FindFirstChild("HumanoidRootPart")
 				if hrp then
+					-- Drop carried brainrot when falling
+					if MissionManager.CarriedBrainrots[userId] then
+						MissionManager.LoseCarriedBrainrot(hitPlayer)
+					end
 					-- Teleport to start of this abyss stage
 					hrp.CFrame = CFrame.new(
 						basePosition.X,
@@ -497,11 +584,11 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 		end
 	end)
 
-	-- Side walls
+	-- Side walls (invisible collision)
 	for _, xOffset in ipairs({-GameConfig.PLATFORM_LENGTH / 2 - 1, GameConfig.PLATFORM_LENGTH / 2 + 1}) do
 		local wall = Instance.new("Part")
 		wall.Name = "SideWall_" .. userId .. "_" .. abyssNum
-		wall.Size = Vector3.new(1, 30, abyssWidth + GameConfig.PLATFORM_WIDTH * 2 + 20)
+		wall.Size = Vector3.new(1, 60, abyssWidth + GameConfig.PLATFORM_WIDTH * 2 + 20)
 		wall.Position = Vector3.new(
 			basePosition.X + xOffset,
 			basePosition.Y + 15,
@@ -514,13 +601,12 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 		table.insert(parts, wall)
 	end
 
-	-- Return the end Z position (where the next stage starts)
 	local endZ = landingZ + GameConfig.PLATFORM_WIDTH
 	return endZ
 end
 
 ------------------------------------------------------------
--- Create the full continuous abyss course
+-- Create the full continuous abyss course (100 stages)
 ------------------------------------------------------------
 function MissionManager.CreateAbyssCourse(player: Player, basePosition: Vector3)
 	local DataManager = getDataManager()
@@ -532,19 +618,19 @@ function MissionManager.CreateAbyssCourse(player: Player, basePosition: Vector3)
 
 	local userId = player.UserId
 	MissionManager.PlayerAbyssParts[userId] = {}
+	MissionManager.SpawnedBrainrots[userId] = {}
 	local parts = MissionManager.PlayerAbyssParts[userId]
 
 	local abyssNum = data.currentAbyss
 	local safeZoneEdgeZ = basePosition.Z + GameConfig.BASE_SIZE.Z / 2
 
-	-- Build multiple stages ahead
+	-- Build 100 stages ahead
 	local currentZ = safeZoneEdgeZ
 	for i = 0, STAGES_AHEAD - 1 do
 		local stageAbyssNum = abyssNum + i
 		currentZ = createAbyssStage(player, userId, basePosition, stageAbyssNum, currentZ, parts)
 	end
 
-	-- Store course state
 	MissionManager.PlayerCourseState[userId] = {
 		basePosition = basePosition,
 		currentAbyssNum = abyssNum,
@@ -553,7 +639,7 @@ function MissionManager.CreateAbyssCourse(player: Player, basePosition: Vector3)
 end
 
 ------------------------------------------------------------
--- Extend the course when player completes a stage
+-- Extend the course when player progresses
 ------------------------------------------------------------
 local function extendCourse(player, basePosition)
 	local userId = player.UserId
@@ -563,49 +649,97 @@ local function extendCourse(player, basePosition)
 	local parts = MissionManager.PlayerAbyssParts[userId]
 	if not parts then return end
 
-	-- Calculate where the next stage should start
 	local safeZoneEdgeZ = basePosition.Z + GameConfig.BASE_SIZE.Z / 2
 	local currentZ = safeZoneEdgeZ
 
-	-- Walk through all existing stages to find the end position
 	for stageNum = state.currentAbyssNum, state.stagesBuiltUpTo do
 		local abyssWidth = GameConfig.GetAbyssWidth(stageNum)
 		currentZ = currentZ + GameConfig.PLATFORM_WIDTH + abyssWidth + GameConfig.PLATFORM_WIDTH
 	end
 
-	-- Add one more stage
-	local newStageNum = state.stagesBuiltUpTo + 1
-	createAbyssStage(player, userId, basePosition, newStageNum, currentZ, parts)
-	state.stagesBuiltUpTo = newStageNum
-	state.currentAbyssNum = state.currentAbyssNum + 1
+	-- Add 3 more stages ahead
+	for _ = 1, 3 do
+		local newStageNum = state.stagesBuiltUpTo + 1
+		currentZ = createAbyssStage(player, userId, basePosition, newStageNum, currentZ, parts)
+		state.stagesBuiltUpTo = newStageNum
+	end
 end
 
 ------------------------------------------------------------
--- Carry brainrot above player's head
+-- Spawn brainrot collectibles on landing platform after crossing
 ------------------------------------------------------------
-function MissionManager.CarryBrainrot(player: Player, brainrotName: string, rarityColor: Color3)
+local function spawnBrainrotsOnPlatform(player, abyssNum, basePosition)
+	local userId = player.UserId
+	local tierName = GameConfig.GetTierForAbyss(abyssNum)
+	local brainrotCount = GameConfig.GetBrainrotRewardCount(abyssNum)
+	local spawned = MissionManager.SpawnedBrainrots[userId]
+	if not spawned then
+		spawned = {}
+		MissionManager.SpawnedBrainrots[userId] = spawned
+	end
+
+	-- Calculate landing platform position
+	local safeZoneEdgeZ = basePosition.Z + GameConfig.BASE_SIZE.Z / 2
+	local currentZ = safeZoneEdgeZ
+	local state = MissionManager.PlayerCourseState[userId]
+	if state then
+		for stageNum = state.currentAbyssNum, abyssNum - 1 do
+			local w = GameConfig.GetAbyssWidth(stageNum)
+			currentZ = currentZ + GameConfig.PLATFORM_WIDTH + w + GameConfig.PLATFORM_WIDTH
+		end
+	end
+	local abyssWidth = GameConfig.GetAbyssWidth(abyssNum)
+	local landingZ = currentZ + GameConfig.PLATFORM_WIDTH + abyssWidth
+	local landingCenter = landingZ + GameConfig.PLATFORM_WIDTH / 2
+
+	-- Spawn brainrots on the landing platform
+	local awardedNames = {}
+	for i = 1, math.min(brainrotCount, 3) do
+		local brainrot = BrainrotData.GetRandomFromTier(tierName)
+		if brainrot then
+			local xOffset = (i - 2) * 6
+			local brainrotPos = Vector3.new(
+				basePosition.X + xOffset,
+				basePosition.Y + 1,
+				landingCenter
+			)
+			local brainrotColor = GameConfig.RARITY_COLORS[brainrot.rarity] or Color3.new(1, 1, 1)
+			local brainrotModel = createBrainrotWithPrompt(brainrot.name, brainrotPos, brainrotColor, userId, brainrot)
+			brainrotModel.Parent = workspace
+			table.insert(spawned, brainrotModel)
+			table.insert(awardedNames, brainrot.name)
+		end
+	end
+
+	return awardedNames
+end
+
+------------------------------------------------------------
+-- Carry brainrot on player's head (visual only)
+------------------------------------------------------------
+function MissionManager.CarryBrainrotOnHead(player: Player, brainrotName: string, rarityColor: Color3)
 	local userId = player.UserId
 	local character = player.Character
 	if not character then return end
 
-	-- Remove old carried brainrot
-	MissionManager.RemoveCarriedBrainrot(player)
+	-- Remove old visual
+	MissionManager.RemoveCarryVisual(player)
 
 	local head = character:FindFirstChild("Head")
 	if not head then return end
 
-	-- Try real model first
+	-- Try real model
 	local realCarry = tryGetRealCarryModel(brainrotName, head, rarityColor, userId)
 	if realCarry then
-		MissionManager.CarriedBrainrots[userId] = realCarry
+		MissionManager.CarriedBrainrots[userId] = MissionManager.CarriedBrainrots[userId] or {}
+		MissionManager.CarriedBrainrots[userId].model = realCarry
 		return
 	end
 
-	-- Fallback: Create a mini brainrot model to sit on the player's head
+	-- Fallback: mini dummy
 	local carryModel = Instance.new("Model")
 	carryModel.Name = "CarriedBrainrot_" .. userId
 
-	-- Mini body
 	local miniBody = Instance.new("Part")
 	miniBody.Name = "MiniBody"
 	miniBody.Size = Vector3.new(1.2, 1.5, 0.8)
@@ -615,7 +749,6 @@ function MissionManager.CarryBrainrot(player: Player, brainrotName: string, rari
 	miniBody.Material = Enum.Material.SmoothPlastic
 	miniBody.Parent = carryModel
 
-	-- Mini head
 	local miniHead = Instance.new("Part")
 	miniHead.Name = "MiniHead"
 	miniHead.Size = Vector3.new(1.2, 1.2, 1.2)
@@ -626,9 +759,7 @@ function MissionManager.CarryBrainrot(player: Player, brainrotName: string, rari
 	miniHead.Material = Enum.Material.SmoothPlastic
 	miniHead.Parent = carryModel
 
-	-- Mini eyes
 	local mLeftEye = Instance.new("Part")
-	mLeftEye.Name = "mLeftEye"
 	mLeftEye.Size = Vector3.new(0.2, 0.25, 0.15)
 	mLeftEye.Anchored = false
 	mLeftEye.CanCollide = false
@@ -637,7 +768,6 @@ function MissionManager.CarryBrainrot(player: Player, brainrotName: string, rari
 	mLeftEye.Parent = carryModel
 
 	local mRightEye = Instance.new("Part")
-	mRightEye.Name = "mRightEye"
 	mRightEye.Size = Vector3.new(0.2, 0.25, 0.15)
 	mRightEye.Anchored = false
 	mRightEye.CanCollide = false
@@ -645,34 +775,12 @@ function MissionManager.CarryBrainrot(player: Player, brainrotName: string, rari
 	mRightEye.Material = Enum.Material.SmoothPlastic
 	mRightEye.Parent = carryModel
 
-	-- Mini left arm
-	local mLeftArm = Instance.new("Part")
-	mLeftArm.Name = "mLeftArm"
-	mLeftArm.Size = Vector3.new(0.4, 1.2, 0.4)
-	mLeftArm.Anchored = false
-	mLeftArm.CanCollide = false
-	mLeftArm.Color = rarityColor
-	mLeftArm.Material = Enum.Material.SmoothPlastic
-	mLeftArm.Parent = carryModel
-
-	-- Mini right arm
-	local mRightArm = Instance.new("Part")
-	mRightArm.Name = "mRightArm"
-	mRightArm.Size = Vector3.new(0.4, 1.2, 0.4)
-	mRightArm.Anchored = false
-	mRightArm.CanCollide = false
-	mRightArm.Color = rarityColor
-	mRightArm.Material = Enum.Material.SmoothPlastic
-	mRightArm.Parent = carryModel
-
-	-- Glow
 	local glow = Instance.new("PointLight")
 	glow.Color = rarityColor
 	glow.Range = 8
 	glow.Brightness = 0.6
 	glow.Parent = miniBody
 
-	-- Name label
 	local nameGui = Instance.new("BillboardGui")
 	nameGui.Size = UDim2.new(0, 150, 0, 30)
 	nameGui.StudsOffset = Vector3.new(0, 2, 0)
@@ -691,7 +799,6 @@ function MissionManager.CarryBrainrot(player: Player, brainrotName: string, rari
 
 	carryModel.PrimaryPart = miniBody
 
-	-- Weld all parts to the body
 	local function weldTo(part, offset)
 		local weld = Instance.new("WeldConstraint")
 		weld.Part0 = miniBody
@@ -700,37 +807,134 @@ function MissionManager.CarryBrainrot(player: Player, brainrotName: string, rari
 		part.CFrame = miniBody.CFrame * offset
 	end
 
-	-- Place the model above the player's head
 	miniBody.CFrame = head.CFrame * CFrame.new(0, 2.5, 0)
 	weldTo(miniHead, CFrame.new(0, 1.35, 0))
 	weldTo(mLeftEye, CFrame.new(-0.25, 1.5, 0.55))
 	weldTo(mRightEye, CFrame.new(0.25, 1.5, 0.55))
-	weldTo(mLeftArm, CFrame.new(-0.8, 0, 0))
-	weldTo(mRightArm, CFrame.new(0.8, 0, 0))
 
-	-- Weld the body to the player's head
 	local headWeld = Instance.new("WeldConstraint")
 	headWeld.Part0 = head
 	headWeld.Part1 = miniBody
 	headWeld.Parent = head
 
 	carryModel.Parent = workspace
-	MissionManager.CarriedBrainrots[userId] = carryModel
+
+	if not MissionManager.CarriedBrainrots[userId] then
+		MissionManager.CarriedBrainrots[userId] = {}
+	end
+	MissionManager.CarriedBrainrots[userId].model = carryModel
 end
 
+------------------------------------------------------------
+-- Remove carry visual only
+------------------------------------------------------------
+function MissionManager.RemoveCarryVisual(player: Player)
+	local userId = player.UserId
+	local data = MissionManager.CarriedBrainrots[userId]
+	if data and data.model and data.model.Parent then
+		data.model:Destroy()
+	end
+	if data then
+		data.model = nil
+	end
+end
+
+------------------------------------------------------------
+-- Remove carried brainrot completely (visual + data)
+------------------------------------------------------------
 function MissionManager.RemoveCarriedBrainrot(player: Player)
 	local userId = player.UserId
-	local model = MissionManager.CarriedBrainrots[userId]
-	if model and model.Parent then
-		model:Destroy()
-	end
+	MissionManager.RemoveCarryVisual(player)
 	MissionManager.CarriedBrainrots[userId] = nil
+	sendCarryUpdate(player, nil, nil)
+end
+
+------------------------------------------------------------
+-- Drop carried brainrot (player chose to drop)
+------------------------------------------------------------
+function MissionManager.DropCarriedBrainrot(player: Player)
+	local userId = player.UserId
+	local carryData = MissionManager.CarriedBrainrots[userId]
+	if not carryData or not carryData.name then return end
+
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+
+	-- Respawn the brainrot at player's feet
+	if hrp then
+		local dropPos = hrp.Position + Vector3.new(0, -2, 3)
+		local brainrotInfo = BrainrotData.GetByName(carryData.name)
+		if brainrotInfo then
+			local rarityColor = GameConfig.RARITY_COLORS[carryData.rarity] or Color3.new(1, 1, 1)
+			local model = createBrainrotWithPrompt(carryData.name, dropPos, rarityColor, userId, brainrotInfo)
+			model.Parent = workspace
+
+			local spawned = MissionManager.SpawnedBrainrots[userId]
+			if spawned then
+				table.insert(spawned, model)
+			end
+		end
+	end
+
+	MissionManager.RemoveCarriedBrainrot(player)
+end
+
+------------------------------------------------------------
+-- Lose carried brainrot (fell into abyss - brainrot is destroyed)
+------------------------------------------------------------
+function MissionManager.LoseCarriedBrainrot(player: Player)
+	MissionManager.RemoveCarriedBrainrot(player)
+
+	-- Notify client
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if remotes then
+		local notifyEvent = remotes:FindFirstChild("BrainrotNotification")
+		if notifyEvent then
+			notifyEvent:FireClient(player, {"Lost brainrot! Be careful!"}, "Common")
+		end
+	end
+end
+
+------------------------------------------------------------
+-- Player returned to base through gate (carrying brainrot -> inventory)
+------------------------------------------------------------
+local returnCooldown = {}
+function MissionManager.OnPlayerReturnedToBase(player: Player)
+	local userId = player.UserId
+	local now = tick()
+	if returnCooldown[userId] and (now - returnCooldown[userId]) < 2 then return end
+	returnCooldown[userId] = now
+
+	local carryData = MissionManager.CarriedBrainrots[userId]
+	if not carryData or not carryData.name then return end
+
+	local DataManager = getDataManager()
+	DataManager.AddBrainrot(player, carryData.name)
+
+	-- Remove carried brainrot
+	MissionManager.RemoveCarriedBrainrot(player)
+
+	-- Notify client
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	if remotes then
+		local notifyEvent = remotes:FindFirstChild("BrainrotNotification")
+		if notifyEvent then
+			notifyEvent:FireClient(player, {carryData.name .. " added to inventory!"}, "Legendary")
+		end
+	end
+
+	sendDataUpdate(player)
+
+	-- Update display
+	if _G.GameManager then
+		_G.GameManager.UpdateBrainrotDisplay(player)
+	end
 end
 
 ------------------------------------------------------------
 -- Called when player successfully crosses an abyss
 ------------------------------------------------------------
-local completionCooldown = {} -- prevent double-triggers
+local completionCooldown = {}
 function MissionManager.OnAbyssCompleted(player: Player, basePosition: Vector3, completedAbyssNum: number)
 	local userId = player.UserId
 	local now = tick()
@@ -741,51 +945,37 @@ function MissionManager.OnAbyssCompleted(player: Player, basePosition: Vector3, 
 	completionCooldown[userId] = now
 
 	local DataManager = getDataManager()
-	local BrainrotManager = getBrainrotManager()
 	local data = DataManager.GetData(player)
 	if not data then return end
 
-	-- Only process if this is the current abyss (prevent re-triggering old stages)
 	if completedAbyssNum ~= data.currentAbyss then
 		return
 	end
 
 	local abyssNum = data.currentAbyss
 
-	-- Award brainrots
-	local awarded = BrainrotManager.AwardBrainrots(player, abyssNum)
-
-	-- Carry the last awarded brainrot above the player's head
-	if #awarded > 0 then
-		local lastBrainrotName = awarded[#awarded]
-		local brainrotInfo = BrainrotData.GetByName(lastBrainrotName)
-		if brainrotInfo then
-			local rarityColor = GameConfig.RARITY_COLORS[brainrotInfo.rarity] or Color3.new(1, 1, 1)
-			MissionManager.CarryBrainrot(player, lastBrainrotName, rarityColor)
-		end
-	end
+	-- Spawn brainrots on the landing platform (player picks them up with E)
+	local awardedNames = spawnBrainrotsOnPlatform(player, abyssNum, basePosition)
 
 	-- Advance to next abyss
 	data.currentAbyss = data.currentAbyss + 1
 	data.totalAbyssesPassed = data.totalAbyssesPassed + 1
 
-	-- Notify client
+	-- Notify client about available brainrots
 	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 	if remotes then
 		local notifyEvent = remotes:FindFirstChild("BrainrotNotification")
 		if notifyEvent then
-			notifyEvent:FireClient(player, awarded, GameConfig.GetTierForAbyss(abyssNum))
+			notifyEvent:FireClient(player, awardedNames, GameConfig.GetTierForAbyss(abyssNum))
 		end
 	end
 
 	sendDataUpdate(player)
 
-	-- Extend the course forward instead of rebuilding
-	extendCourse(player, basePosition)
-
-	-- Update brainrot display in base
-	if _G.GameManager then
-		_G.GameManager.UpdateBrainrotDisplay(player)
+	-- Extend course if needed
+	local state = MissionManager.PlayerCourseState[userId]
+	if state and data.currentAbyss + 10 >= state.stagesBuiltUpTo then
+		extendCourse(player, basePosition)
 	end
 end
 
@@ -805,7 +995,16 @@ function MissionManager.CleanupCourse(player: Player)
 	MissionManager.PlayerAbyssParts[userId] = nil
 	MissionManager.PlayerCourseState[userId] = nil
 
-	-- Also remove carried brainrot
+	-- Clean spawned brainrots
+	local spawned = MissionManager.SpawnedBrainrots[userId]
+	if spawned then
+		for _, m in ipairs(spawned) do
+			if m and m.Parent then m:Destroy() end
+		end
+	end
+	MissionManager.SpawnedBrainrots[userId] = nil
+
+	-- Remove carried brainrot
 	MissionManager.RemoveCarriedBrainrot(player)
 end
 
@@ -813,12 +1012,12 @@ end
 Players.PlayerRemoving:Connect(function(player)
 	MissionManager.CleanupCourse(player)
 	completionCooldown[player.UserId] = nil
+	returnCooldown[player.UserId] = nil
 end)
 
--- Re-attach carried brainrot when character respawns
+-- Drop carried brainrot when character respawns
 Players.PlayerAdded:Connect(function(player)
 	player.CharacterAdded:Connect(function()
-		-- Small delay to let character fully load
 		task.wait(1)
 		MissionManager.RemoveCarriedBrainrot(player)
 	end)

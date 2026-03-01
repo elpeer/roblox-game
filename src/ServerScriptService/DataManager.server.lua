@@ -30,7 +30,8 @@ local DEFAULT_DATA = {
 	currentTreadmill = "Basic Treadmill",
 	currentAbyss = 1,
 	totalAbyssesPassed = 0,
-	collectedBrainrots = {}, -- { ["name"] = count }
+	collectedBrainrots = {}, -- { ["name"] = count } -- in inventory, not earning
+	placedBrainrots = {},    -- { ["name"] = count } -- on stage, earning money
 }
 
 function DataManager.GetDefaultData()
@@ -136,6 +137,21 @@ function DataManager.AddSpeed(player: Player, amount: number)
 	if data then
 		data.speed = data.speed + amount
 	end
+end
+
+-- Move all brainrots from inventory to placed (earning money)
+function DataManager.PlaceAllBrainrots(player: Player)
+	local data = DataManager.GetData(player)
+	if not data then return end
+	if not data.placedBrainrots then data.placedBrainrots = {} end
+
+	for name, count in pairs(data.collectedBrainrots) do
+		if not data.placedBrainrots[name] then
+			data.placedBrainrots[name] = 0
+		end
+		data.placedBrainrots[name] = data.placedBrainrots[name] + count
+	end
+	data.collectedBrainrots = {}
 end
 
 function DataManager.IsDataLoaded(player: Player): boolean

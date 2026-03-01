@@ -27,8 +27,8 @@ MissionManager.SpawnedBrainrots = {}    -- [userId] = { Model, Model, ... } (bra
 -- Number of abyss stages to render ahead
 local STAGES_AHEAD = 100
 
--- Folder for real brainrot models
-local brainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotModels")
+-- Folder for real brainrot models (WaitForChild so Rojo/Studio has time to sync)
+local brainrotModelsFolder = ReplicatedStorage:WaitForChild("BrainrotModels", 15)
 
 ------------------------------------------------------------
 -- Helper: Try to clone a real model from BrainrotModels folder
@@ -686,61 +686,97 @@ local function createAbyssStage(player, userId, basePosition, abyssNum, startZ, 
 		end
 	end)
 
-	-- Side walls (tall visible concrete walls forming a corridor)
-	local corridorWallHeight = 50
-	local corridorWallThickness = 4
+	-- Side walls (brown terraced terrain walls forming a corridor)
+	local corridorWallHeight = 45
+	local corridorWallThickness = 8
 	local stageLength = abyssWidth + GameConfig.PLATFORM_WIDTH * 2
 	local stageCenterZ = startZ + stageLength / 2
 
-	for wallIdx, xOffset in ipairs({-GameConfig.PLATFORM_LENGTH / 2 - corridorWallThickness / 2, GameConfig.PLATFORM_LENGTH / 2 + corridorWallThickness / 2}) do
-		-- Main wall
-		local wall = Instance.new("Part")
-		wall.Name = "SideWall_" .. userId .. "_" .. abyssNum
-		wall.Size = Vector3.new(corridorWallThickness, corridorWallHeight, stageLength)
-		wall.Position = Vector3.new(
-			basePosition.X + xOffset,
-			basePosition.Y + corridorWallHeight / 2 - 5,
-			stageCenterZ
-		)
-		wall.Anchored = true
-		wall.Color = Color3.fromRGB(90, 85, 80)
-		wall.Material = Enum.Material.Concrete
-		wall.Parent = workspace
-		table.insert(parts, wall)
+	-- Brown terrace colors (bottom to top)
+	local cTerraceColors = {
+		Color3.fromRGB(100, 70, 40),
+		Color3.fromRGB(130, 95, 55),
+		Color3.fromRGB(155, 120, 75),
+		Color3.fromRGB(170, 140, 95),
+	}
+	local cGrassColor = Color3.fromRGB(55, 140, 40)
 
-		-- Horizontal accent lines on wall (at intervals)
-		for _, accentY in ipairs({8, 20, 32}) do
-			local accent = Instance.new("Part")
-			accent.Name = "WallAccent_" .. userId .. "_" .. abyssNum
-			accent.Size = Vector3.new(0.5, 0.6, stageLength)
-			accent.Position = Vector3.new(
-				basePosition.X + xOffset + (wallIdx == 1 and (corridorWallThickness / 2 + 0.1) or -(corridorWallThickness / 2 + 0.1)),
-				basePosition.Y + accentY,
-				stageCenterZ
-			)
-			accent.Anchored = true
-			accent.CanCollide = false
-			accent.Color = Color3.fromRGB(70, 65, 60)
-			accent.Material = Enum.Material.Concrete
-			accent.Parent = workspace
-			table.insert(parts, accent)
+	for _, xOffset in ipairs({-GameConfig.PLATFORM_LENGTH / 2 - corridorWallThickness / 2, GameConfig.PLATFORM_LENGTH / 2 + corridorWallThickness / 2}) do
+		local wallX = basePosition.X + xOffset
+
+		-- 4 terraced layers
+		local layerHeight = corridorWallHeight / 4
+		for layer = 1, 4 do
+			local yBottom = (layer - 1) * layerHeight
+			local recess = (layer - 1) * 1.5
+			local layerPart = Instance.new("Part")
+			layerPart.Name = "CWall_" .. userId .. "_" .. abyssNum .. "_L" .. layer
+			layerPart.Size = Vector3.new(corridorWallThickness - recess, layerHeight, stageLength)
+			layerPart.Position = Vector3.new(wallX, basePosition.Y + yBottom + layerHeight / 2 - 5, stageCenterZ)
+			layerPart.Anchored = true
+			layerPart.Color = cTerraceColors[layer]
+			layerPart.Material = Enum.Material.Slate
+			layerPart.Parent = workspace
+			table.insert(parts, layerPart)
+
+			-- Grass strip on each ledge (except bottom)
+			if layer > 1 then
+				local grassStrip = Instance.new("Part")
+				grassStrip.Name = "CWallGrass_" .. userId .. "_" .. abyssNum
+				grassStrip.Size = Vector3.new(2, 0.4, stageLength)
+				grassStrip.Position = Vector3.new(wallX, basePosition.Y + yBottom + 0.2 - 5, stageCenterZ)
+				grassStrip.Anchored = true
+				grassStrip.CanCollide = false
+				grassStrip.Color = cGrassColor
+				grassStrip.Material = Enum.Material.Grass
+				grassStrip.Parent = workspace
+				table.insert(parts, grassStrip)
+			end
 		end
 
-		-- Neon strip at top of wall
-		local topStrip = Instance.new("Part")
-		topStrip.Name = "WallTopStrip_" .. userId .. "_" .. abyssNum
-		topStrip.Size = Vector3.new(corridorWallThickness + 1, 0.5, stageLength)
-		topStrip.Position = Vector3.new(
-			basePosition.X + xOffset,
-			basePosition.Y + corridorWallHeight - 5 + 0.25,
-			stageCenterZ
-		)
-		topStrip.Anchored = true
-		topStrip.CanCollide = false
-		topStrip.Color = tierColor
-		topStrip.Material = Enum.Material.Neon
-		topStrip.Parent = workspace
-		table.insert(parts, topStrip)
+		-- Top grass cap
+		local topGrass = Instance.new("Part")
+		topGrass.Name = "CWallTopGrass_" .. userId .. "_" .. abyssNum
+		topGrass.Size = Vector3.new(corridorWallThickness + 2, 0.5, stageLength)
+		topGrass.Position = Vector3.new(wallX, basePosition.Y + corridorWallHeight - 5 + 0.25, stageCenterZ)
+		topGrass.Anchored = true
+		topGrass.CanCollide = false
+		topGrass.Color = cGrassColor
+		topGrass.Material = Enum.Material.Grass
+		topGrass.Parent = workspace
+		table.insert(parts, topGrass)
+
+		-- Trees on top of wall (every ~40 studs along the stage)
+		local treeSpacing = 40
+		local treeCount = math.max(1, math.floor(stageLength / treeSpacing))
+		for t = 1, treeCount do
+			local tZ = stageCenterZ - stageLength / 2 + (t - 0.5) * (stageLength / treeCount)
+			local treeY = basePosition.Y + corridorWallHeight - 5
+
+			local trunk = Instance.new("Part")
+			trunk.Name = "CWallTree_" .. userId .. "_" .. abyssNum
+			trunk.Size = Vector3.new(1.8, 7, 1.8)
+			trunk.Position = Vector3.new(wallX, treeY + 4, tZ)
+			trunk.Anchored = true
+			trunk.Color = Color3.fromRGB(80, 55, 25)
+			trunk.Material = Enum.Material.Wood
+			trunk.Shape = Enum.PartType.Cylinder
+			trunk.Orientation = Vector3.new(0, 0, 90)
+			trunk.Parent = workspace
+			table.insert(parts, trunk)
+
+			local leaves = Instance.new("Part")
+			leaves.Name = "CWallLeaves_" .. userId .. "_" .. abyssNum
+			local lScale = 0.7 + (abyssNum % 3) * 0.15
+			leaves.Size = Vector3.new(7 * lScale, 6 * lScale, 7 * lScale)
+			leaves.Position = Vector3.new(wallX, treeY + 8 + lScale, tZ)
+			leaves.Anchored = true
+			leaves.Color = Color3.fromRGB(40 + (t * 10) % 30, 140 + (t * 15) % 40, 35 + (t * 8) % 25)
+			leaves.Material = Enum.Material.Grass
+			leaves.Shape = Enum.PartType.Ball
+			leaves.Parent = workspace
+			table.insert(parts, leaves)
+		end
 	end
 
 	local endZ = landingZ + GameConfig.PLATFORM_WIDTH

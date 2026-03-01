@@ -452,7 +452,9 @@ function GameManager.CreateBase(player: Player): Vector3
 	signLabel.Text = "ABYSS COURSE"
 	signLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
 	signLabel.TextScaled = true
-	signLabel.Font = Enum.Font.GothamBold
+	signLabel.Font = Enum.Font.FredokaOne
+	signLabel.TextStrokeTransparency = 0
+	signLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	signLabel.Parent = signGui
 
 	-- ============================
@@ -612,7 +614,9 @@ function GameManager.CreateBase(player: Player): Vector3
 	treadmillLabel.Text = "TREADMILL\n(Click in Inventory)"
 	treadmillLabel.TextColor3 = Color3.new(1, 1, 1)
 	treadmillLabel.TextScaled = true
-	treadmillLabel.Font = Enum.Font.GothamBold
+	treadmillLabel.Font = Enum.Font.FredokaOne
+	treadmillLabel.TextStrokeTransparency = 0
+	treadmillLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	treadmillLabel.Parent = treadmillGui
 
 	-- "GYM" sign with modern backing panel
@@ -648,7 +652,9 @@ function GameManager.CreateBase(player: Player): Vector3
 	gymSignLabel.Text = "GYM"
 	gymSignLabel.TextColor3 = Color3.new(1, 1, 1)
 	gymSignLabel.TextScaled = true
-	gymSignLabel.Font = Enum.Font.GothamBold
+	gymSignLabel.Font = Enum.Font.FredokaOne
+	gymSignLabel.TextStrokeTransparency = 0
+	gymSignLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	gymSignLabel.Parent = gymSignGui
 
 	-- ============================
@@ -729,7 +735,9 @@ function GameManager.CreateBase(player: Player): Vector3
 	brSignLabel.Text = player.Name .. "'s BRAINROTS"
 	brSignLabel.TextColor3 = Color3.new(1, 1, 1)
 	brSignLabel.TextScaled = true
-	brSignLabel.Font = Enum.Font.GothamBold
+	brSignLabel.Font = Enum.Font.FredokaOne
+	brSignLabel.TextStrokeTransparency = 0
+	brSignLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	brSignLabel.Parent = brSignGui
 
 	-- ============================
@@ -878,46 +886,107 @@ function GameManager.CreateBase(player: Player): Vector3
 	nameLabel.Text = player.Name .. "'s Base"
 	nameLabel.TextColor3 = Color3.new(1, 1, 1)
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.TextStrokeTransparency = 0
+	nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	nameLabel.Parent = nameGui
 
 	-- ============================
-	-- MODERN LAMP POSTS (around the base)
+	-- TORCHES WITH FIRE (around the base)
 	-- ============================
-	local lampOffsets = {
+	local torchOffsets = {
 		Vector3.new(-30, 0, 60),
 		Vector3.new(30, 0, 60),
 		Vector3.new(-30, 0, -60),
 		Vector3.new(30, 0, -60),
 		Vector3.new(-60, 0, 0),
 		Vector3.new(60, 0, 0),
+		Vector3.new(-60, 0, 50),
+		Vector3.new(60, 0, 50),
+		Vector3.new(-60, 0, -50),
+		Vector3.new(60, 0, -50),
+		Vector3.new(0, 0, 80),
+		Vector3.new(-50, 0, 80),
+		Vector3.new(50, 0, 80),
 	}
-	for i, offset in ipairs(lampOffsets) do
-		local pole = Instance.new("Part")
-		pole.Name = "LampPole_" .. userId .. "_" .. i
-		pole.Size = Vector3.new(0.8, 12, 0.8)
-		pole.Position = basePosition + offset + Vector3.new(0, 6.5, 0)
-		pole.Anchored = true
-		pole.Color = Color3.fromRGB(200, 200, 210)
-		pole.Material = Enum.Material.SmoothPlastic
-		pole.Parent = workspace
-		table.insert(parts, pole)
+	for i, offset in ipairs(torchOffsets) do
+		-- Stone base block
+		local torchBase = Instance.new("Part")
+		torchBase.Name = "TorchBase_" .. userId .. "_" .. i
+		torchBase.Size = Vector3.new(3, 1.5, 3)
+		torchBase.Position = basePosition + offset + Vector3.new(0, 0.75, 0)
+		torchBase.Anchored = true
+		torchBase.Color = Color3.fromRGB(80, 80, 85)
+		torchBase.Material = Enum.Material.Slate
+		torchBase.Parent = workspace
+		table.insert(parts, torchBase)
 
-		local lampHead = Instance.new("Part")
-		lampHead.Name = "LampHead_" .. userId .. "_" .. i
-		lampHead.Size = Vector3.new(2.5, 1, 2.5)
-		lampHead.Position = basePosition + offset + Vector3.new(0, 13, 0)
-		lampHead.Anchored = true
-		lampHead.Color = Color3.fromRGB(255, 240, 200)
-		lampHead.Material = Enum.Material.Neon
-		lampHead.Parent = workspace
-		table.insert(parts, lampHead)
+		-- Wooden pole
+		local torchPole = Instance.new("Part")
+		torchPole.Name = "TorchPole_" .. userId .. "_" .. i
+		torchPole.Size = Vector3.new(1.2, 10, 1.2)
+		torchPole.Position = basePosition + offset + Vector3.new(0, 6.5, 0)
+		torchPole.Anchored = true
+		torchPole.Color = Color3.fromRGB(90, 60, 30)
+		torchPole.Material = Enum.Material.Wood
+		torchPole.Parent = workspace
+		table.insert(parts, torchPole)
 
-		local pointLight = Instance.new("PointLight")
-		pointLight.Color = Color3.fromRGB(255, 240, 200)
-		pointLight.Range = 35
-		pointLight.Brightness = 0.8
-		pointLight.Parent = lampHead
+		-- Bowl / dish at top
+		local torchBowl = Instance.new("Part")
+		torchBowl.Name = "TorchBowl_" .. userId .. "_" .. i
+		torchBowl.Size = Vector3.new(2.5, 1.5, 2.5)
+		torchBowl.Position = basePosition + offset + Vector3.new(0, 12.25, 0)
+		torchBowl.Anchored = true
+		torchBowl.Color = Color3.fromRGB(50, 50, 55)
+		torchBowl.Material = Enum.Material.Metal
+		torchBowl.Parent = workspace
+		table.insert(parts, torchBowl)
+
+		-- Glowing ember core in the bowl
+		local emberCore = Instance.new("Part")
+		emberCore.Name = "TorchEmber_" .. userId .. "_" .. i
+		emberCore.Size = Vector3.new(1.8, 1, 1.8)
+		emberCore.Position = basePosition + offset + Vector3.new(0, 13, 0)
+		emberCore.Anchored = true
+		emberCore.CanCollide = false
+		emberCore.Color = Color3.fromRGB(255, 120, 0)
+		emberCore.Material = Enum.Material.Neon
+		emberCore.Parent = workspace
+		table.insert(parts, emberCore)
+
+		-- Fire particle emitter
+		local fireEmitter = Instance.new("ParticleEmitter")
+		fireEmitter.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 50)),
+			ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 140, 20)),
+			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(255, 60, 0)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 20, 0)),
+		})
+		fireEmitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1.5),
+			NumberSequenceKeypoint.new(0.3, 2.5),
+			NumberSequenceKeypoint.new(0.7, 1.5),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		fireEmitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(0.5, 0.4),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		fireEmitter.Lifetime = NumberRange.new(0.4, 1.2)
+		fireEmitter.Rate = 25
+		fireEmitter.Speed = NumberRange.new(3, 7)
+		fireEmitter.SpreadAngle = Vector2.new(15, 15)
+		fireEmitter.LightEmission = 1
+		fireEmitter.Parent = emberCore
+
+		-- Warm fire glow light
+		local fireLight = Instance.new("PointLight")
+		fireLight.Color = Color3.fromRGB(255, 150, 50)
+		fireLight.Range = 40
+		fireLight.Brightness = 1.2
+		fireLight.Parent = emberCore
 	end
 
 	-- ============================
@@ -1130,9 +1199,11 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 			incomeLabel.Size = UDim2.new(1, 0, 1, 0)
 			incomeLabel.BackgroundTransparency = 1
 			incomeLabel.Text = "$" .. formatNumber(incomePerSec) .. "/s"
-			incomeLabel.TextColor3 = Color3.fromRGB(50, 255, 50)
+			incomeLabel.TextColor3 = Color3.new(1, 1, 1)
 			incomeLabel.TextScaled = true
-			incomeLabel.Font = Enum.Font.GothamBold
+			incomeLabel.Font = Enum.Font.FredokaOne
+			incomeLabel.TextStrokeTransparency = 0
+			incomeLabel.TextStrokeColor3 = Color3.fromRGB(0, 80, 0)
 			incomeLabel.Parent = incomeGui
 
 			-- Create a container model for the brainrot + pedestal parts
@@ -1290,7 +1361,9 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 				nameLabel.Text = brainrotName
 				nameLabel.TextColor3 = rarityColor
 				nameLabel.TextScaled = true
-				nameLabel.Font = Enum.Font.GothamBold
+				nameLabel.Font = Enum.Font.FredokaOne
+				nameLabel.TextStrokeTransparency = 0
+				nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 				nameLabel.Parent = nameGui
 
 				local countLabel = Instance.new("TextLabel")
@@ -1300,7 +1373,9 @@ function GameManager.UpdateBrainrotDisplay(player: Player)
 				countLabel.Text = "x" .. count
 				countLabel.TextColor3 = Color3.new(1, 1, 1)
 				countLabel.TextScaled = true
-				countLabel.Font = Enum.Font.Gotham
+				countLabel.Font = Enum.Font.FredokaOne
+				countLabel.TextStrokeTransparency = 0
+				countLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 				countLabel.Parent = nameGui
 			end
 

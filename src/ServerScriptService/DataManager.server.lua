@@ -154,6 +154,47 @@ function DataManager.PlaceAllBrainrots(player: Player)
 	data.collectedBrainrots = {}
 end
 
+-- Place a single brainrot from inventory to stage
+function DataManager.PlaceSingleBrainrot(player: Player, brainrotName: string): boolean
+	local data = DataManager.GetData(player)
+	if not data then return false end
+	if not data.placedBrainrots then data.placedBrainrots = {} end
+
+	local count = data.collectedBrainrots[brainrotName]
+	if not count or count <= 0 then return false end
+
+	data.collectedBrainrots[brainrotName] = count - 1
+	if data.collectedBrainrots[brainrotName] <= 0 then
+		data.collectedBrainrots[brainrotName] = nil
+	end
+
+	if not data.placedBrainrots[brainrotName] then
+		data.placedBrainrots[brainrotName] = 0
+	end
+	data.placedBrainrots[brainrotName] = data.placedBrainrots[brainrotName] + 1
+	return true
+end
+
+-- Return a single brainrot from stage to inventory
+function DataManager.ReturnBrainrot(player: Player, brainrotName: string): boolean
+	local data = DataManager.GetData(player)
+	if not data then return false end
+
+	local count = (data.placedBrainrots or {})[brainrotName]
+	if not count or count <= 0 then return false end
+
+	data.placedBrainrots[brainrotName] = count - 1
+	if data.placedBrainrots[brainrotName] <= 0 then
+		data.placedBrainrots[brainrotName] = nil
+	end
+
+	if not data.collectedBrainrots[brainrotName] then
+		data.collectedBrainrots[brainrotName] = 0
+	end
+	data.collectedBrainrots[brainrotName] = data.collectedBrainrots[brainrotName] + 1
+	return true
+end
+
 function DataManager.IsDataLoaded(player: Player): boolean
 	return DataManager.DataLoaded[player.UserId] == true
 end

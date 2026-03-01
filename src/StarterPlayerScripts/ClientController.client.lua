@@ -101,6 +101,20 @@ function ClientState.PlaceBrainrots()
 	end
 end
 
+function ClientState.PlaceSingleBrainrot(brainrotName: string)
+	local event = Remotes:FindFirstChild("PlaceSingleBrainrot")
+	if event then
+		event:FireServer(brainrotName)
+	end
+end
+
+function ClientState.ReturnBrainrot(brainrotName: string)
+	local event = Remotes:FindFirstChild("ReturnBrainrot")
+	if event then
+		event:FireServer(brainrotName)
+	end
+end
+
 function ClientState.FormatNumber(n: number): string
 	if n >= 1000000000 then
 		return string.format("%.1fB", n / 1000000000)
